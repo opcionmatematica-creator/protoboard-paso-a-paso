@@ -44,7 +44,25 @@ h1{font-family:var(--f-head);font-weight:700;font-size:30px;line-height:1.1;marg
 .spacer{flex:1}
 .toggle{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--muted);cursor:pointer}
 .board-wrap{overflow-x:auto;border-radius:10px}
-#bb{display:block;width:100%;min-width:760px;height:auto}
+.board-area{position:relative;min-width:760px}
+#bb{display:block;width:100%;height:auto}
+.hint{font-size:13px;color:var(--muted)}
+/* ficha de la pieza tocada */
+.ficha{position:absolute;z-index:5;width:min(350px,calc(100% - 16px));background:var(--surface);color:var(--ink);border:1px solid var(--line);
+  border-radius:12px;box-shadow:0 12px 32px rgba(10,20,35,.22);padding:12px 14px;font-size:13.5px;line-height:1.45}
+.ficha-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.ficha-h b{font-family:var(--f-head);font-size:19px}
+.pill{font:600 10.5px var(--f-mono);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:var(--surface-2);border-radius:999px;padding:2px 8px}
+.ficha .x{margin-left:auto;border:0;background:transparent;color:var(--muted);font-size:22px;line-height:1;cursor:pointer;padding:0 2px}
+.ficha p{margin:6px 0 0}
+.ficha .tw{overflow-x:auto}
+.ficha table{width:100%;border-collapse:collapse;margin:8px 0 6px}
+.ficha th,.ficha td{padding:4px 8px 4px 0;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.ficha th{font:600 10.5px var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.ficha td.h{font-family:var(--f-mono);white-space:nowrap}
+.ficha .pie{display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--muted);font-size:13px}
+.ficha .ir{font:600 13px var(--f-body);color:var(--accent);background:transparent;border:1px solid var(--line);border-radius:7px;padding:5px 9px;cursor:pointer;white-space:nowrap}
+.ficha .x:focus-visible,.ficha .ir:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .info{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);gap:18px;align-items:start}
 @media (max-width:860px){.info{grid-template-columns:minmax(0,1fr)}}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px 22px;min-width:0}
@@ -100,7 +118,11 @@ aside{display:grid;gap:14px;min-width:0}
 .rail-lab{font-size:11px;fill:var(--muted)}
 .step1 .rail-lab{fill:var(--accent);font-weight:600}
 .step1 .stripe{stroke-width:3.2}
-.part{display:none} .part.on{display:inline}
+.part{display:none;cursor:pointer} .part.on{display:inline}
+.part:focus{outline:none}
+.part.on:hover,.part:focus-visible{filter:drop-shadow(0 0 2.5px #e0157a)}
+.part.sel{filter:drop-shadow(0 0 3px #e0157a) drop-shadow(0 0 1px #e0157a)}
+.selring{fill:none;stroke:#e0157a;stroke-width:2.6}
 .dec{display:none} .dec.on{display:inline}
 .tag{display:none;pointer-events:none} .tag.on{display:inline}
 .ring{fill:none;stroke:#e0157a;stroke-width:2;animation:pulse 1.2s ease-in-out infinite}
@@ -133,10 +155,11 @@ aside{display:grid;gap:14px;min-width:0}
       <button class="btn" id="next" type="button" aria-label="Paso siguiente">Siguiente ▶</button>
       <button class="btn" id="replay" type="button" aria-label="Repetir animación del paso">↻</button>
       <span class="counter" id="counter"></span>
+      <span class="hint">· Toca una pieza para ver qué es</span>
       <span class="spacer"></span>
       <label class="toggle"><input type="checkbox" id="labels"> Mostrar todas las etiquetas</label>
     </div>
-    <div class="board-wrap"><svg id="bb" role="img" aria-label="Protoboard con el montaje"></svg></div>
+    <div class="board-wrap"><div class="board-area" id="area"><svg id="bb" aria-label="Protoboard con el montaje"></svg><div class="ficha" id="ficha" role="dialog" aria-label="Pieza seleccionada" hidden></div></div></div>
   </section>
   <div class="info">
     <article class="card" id="card" aria-live="polite"></article>
@@ -248,7 +271,8 @@ const wireEnds=p=>p.curve?[p.curve.from,p.curve.to]:p.pts;
 function renderWire(p){
   const d=wireD(p),col=C[p.color]||p.color;
   const out=p.color==='white'?'#8a9199':p.color==='black'?'#000':shade(col,.38);
-  let s=`<path class="wp" d="${d}" pathLength="1" fill="none" stroke="${out}" stroke-width="6.2" stroke-linecap="round" stroke-linejoin="round"/>
+  let s=`<path d="${d}" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="round" pointer-events="stroke"/>
+  <path class="wp" d="${d}" pathLength="1" fill="none" stroke="${out}" stroke-width="6.2" stroke-linecap="round" stroke-linejoin="round"/>
   <path class="wp" d="${d}" pathLength="1" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
   <path class="wp" d="${d}" pathLength="1" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="1.1" stroke-linecap="round" transform="translate(-.8 -.8)"/>`;
   for(const e of wireEnds(p)) if(Array.isArray(e)) s+=pinMark(hp(e));
@@ -343,12 +367,65 @@ function tagSVG(p){
   const txt=`${p.ref} ${p.val||p.ohm||''}`.trim(),w=txt.length*5.7+12,{x,y}=tagPos(p);
   return `<rect x="${x-w/2}" y="${y-8}" width="${w}" height="15" rx="4" fill="#132030" opacity=".93"/><text x="${x}" y="${y+3.2}" text-anchor="middle" font-size="9.5" font-weight="600" fill="#fff">${txt}</text>`;
 }
+// ---------- ficha de la pieza tocada ----------
+const TIPO={to92:'transistor · TO-92',to126:'transistor · TO-126',to220:'encapsulado TO-220',res:'resistencia',cap:'condensador',elec:'condensador electrolítico',diode:'diodo',led:'LED',dip:'circuito integrado',pot:'potenciómetro',wire:'cable'};
+const PATA={E:'emisor',B:'base',C:'colector',G:'compuerta',D:'drenador',S:'surtidor',A:'ánodo',K:'cátodo','+':'positivo','−':'negativo'};
+function patasDe(p){
+  if(['to92','to126','to220','pot'].includes(p.type)) return p.pins.map((L,i)=>[L,[p.c-1+i,p.r],p.nets[i]]);
+  if(p.type==='res'||p.type==='cap') return [['1',p.a,p.nets[0]],['2',p.b,p.nets[1]]];
+  if(p.type==='diode'||p.type==='led') return [['A',p.an,p.nets.an],['K',p.ka,p.nets.ka]];
+  if(p.type==='elec') return [['+',p.pos,p.nets.pos],['−',p.neg,p.nets.neg]];
+  if(p.type==='dip') return p.nets.map((n,i)=>[String(i+1),dipHole(p,i+1),n]);
+  return wireEnds(p).map(e=>['extremo',e,p.net]);
+}
+function nombrePieza(p){return p.ref?`${p.ref} ${p.val||p.ohm||''}`.trim():`cable ${CNAME[p.color]||''}`.trim()}
+function unidas(p,net){ // otras piezas con una pata en la misma red
+  if(!net) return '—';
+  const out=[];
+  for(const q of PARTS){ if(q===p) continue;
+    for(const [L,,n] of patasDe(q)) if(n===net){
+      const t=q.type==='wire'?`cable ${CNAME[q.color]||''}`:(['res','cap'].includes(q.type)?q.ref:`${q.ref} (${L})`);
+      out.push(q.step>cur?`<span class="note">${t}, paso ${q.step}</span>`:t); break; } }
+  return [...new Set(out)].join(', ')||'—';
+}
+const ficha=document.getElementById('ficha'),area=document.getElementById('area');
+let selP=null,selPt=null;
+function seleccionar(p,pt){
+  selP=p;selPt=pt;
+  PARTS.forEach(q=>q.el.classList.toggle('sel',q===p));
+  selL.innerHTML=holesOf(p).map(h=>{const q=hp(h);return `<circle class="selring" cx="${q.x}" cy="${q.y}" r="7.5"/>`}).join('');
+  const st=STEPS[p.step-1],esCable=p.type==='wire';
+  const filas=patasDe(p).map(([L,h,n])=>`<tr><td>${esCable?L:`${L}${PATA[L]?` <span class="note">${PATA[L]}</span>`:''}`}</td><td class="h">${hn(h)}</td><td>${nn(n)||'—'}</td>${esCable?'':`<td>${unidas(p,n)}</td>`}</tr>`).join('');
+  ficha.innerHTML=`<div class="ficha-h"><b>${p.ref||'Cable'}</b><span>${esCable?(CNAME[p.color]||''):(p.val||p.ohm||'')}</span><span class="pill">${TIPO[p.type]||p.type}</span><button class="x" type="button" aria-label="Cerrar">×</button></div>
+    ${p.info?`<p>${p.info}</p>`:''}
+    <div class="tw"><table><tr><th>Pata</th><th>Hueco</th><th>Nodo</th>${esCable?'':'<th>Unida a</th>'}</tr>${filas}</table></div>
+    <div class="pie"><span>Paso ${p.step}: ${st?st.t:''}</span>${p.step!==cur?'<button class="ir" type="button">Ir al paso</button>':''}</div>`;
+  ficha.querySelector('.x').addEventListener('click',cerrarFicha);
+  const ir=ficha.querySelector('.ir');
+  if(ir) ir.addEventListener('click',()=>{stop();go(p.step);seleccionar(p,selPt)});
+  ficha.hidden=false;
+  const A=area.getBoundingClientRect(),W=ficha.offsetWidth,H=ficha.offsetHeight;
+  let x=pt.x-A.left+14,y=pt.y-A.top+14;
+  if(x+W>A.width-8) x=pt.x-A.left-W-14;
+  x=Math.max(8,Math.min(x,A.width-W-8));
+  if(y+H>A.height-8) y=pt.y-A.top-H-14;
+  y=Math.max(8,y);
+  ficha.style.left=x+'px';ficha.style.top=y+'px';
+}
+function cerrarFicha(){
+  if(!selP&&ficha.hidden) return;
+  selP=null;ficha.hidden=true;selL.innerHTML='';
+  PARTS.forEach(q=>q.el&&q.el.classList.remove('sel'));
+}
 svg.innerHTML=`<defs><filter id="sh" x="-30%" y="-40%" width="160%" height="180%"><feDropShadow dx=".8" dy="1.5" stdDeviation="1" flood-opacity=".33"/></filter></defs>`
- +boardSVG()+supplySVG()+`<g id="L1"></g><g id="L2"></g><g id="L3"></g><g id="flowL"></g>`+decorSVG()+`<g id="rings"></g><g id="tags"></g>`;
+ +boardSVG()+supplySVG()+`<g id="L1"></g><g id="L2"></g><g id="L3"></g><g id="flowL"></g>`+decorSVG()+`<g id="rings"></g><g id="selL"></g><g id="tags"></g>`;
 const LAY={1:svg.querySelector('#L1'),2:svg.querySelector('#L2'),3:svg.querySelector('#L3')};
-const tagsL=svg.querySelector('#tags'),ringsL=svg.querySelector('#rings'),flowL=svg.querySelector('#flowL');
+const tagsL=svg.querySelector('#tags'),ringsL=svg.querySelector('#rings'),flowL=svg.querySelector('#flowL'),selL=svg.querySelector('#selL');
 for(const p of PARTS){
   const g=document.createElementNS(NS,'g');g.setAttribute('class','part');g.innerHTML=renderPart(p);
+  g.setAttribute('tabindex','0');g.setAttribute('role','button');g.setAttribute('aria-label',`${nombrePieza(p)}: ${TIPO[p.type]||p.type}`);
+  g.addEventListener('click',e=>{e.stopPropagation();seleccionar(p,{x:e.clientX,y:e.clientY})});
+  g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();const r=g.getBoundingClientRect();seleccionar(p,{x:r.left+r.width/2,y:r.top+r.height/2})}});
   LAY[p.z||(p.type==='wire'?1:2)].appendChild(g);p.el=g;
   if(p.ref){const t=document.createElementNS(NS,'g');t.setAttribute('class','tag');t.innerHTML=tagSVG(p);tagsL.appendChild(t);p.tag=t}
 }
@@ -431,6 +508,7 @@ const list=document.getElementById('steps');
 list.innerHTML=STEPS.map((s,i)=>`<li><button type="button" class="chip" data-i="${i+1}"><span class="n">${String(i+1).padStart(2,'0')}</span><span>${s.t}</span></button></li>`).join('');
 list.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{stop();go(+b.dataset.i)}));
 function go(n,animate=true){
+  cerrarFicha();
   const prev=cur;cur=Math.max(1,Math.min(STEPS.length,n));
   if(T&&(cur!==prev||!STEPS[cur-1].test||testState===null)) setTest(T.estados[0].id);
   svg.classList.toggle('testing',!!STEPS[cur-1].test);
@@ -457,6 +535,8 @@ document.getElementById('prev').addEventListener('click',()=>{stop();go(cur-1)})
 document.getElementById('next').addEventListener('click',()=>{stop();go(cur+1)});
 document.getElementById('replay').addEventListener('click',()=>{stop();go(cur)});
 document.getElementById('labels').addEventListener('change',e=>{labelsOn=e.target.checked;go(cur,false)});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')cerrarFicha()});
+svg.addEventListener('click',()=>cerrarFicha());
 document.addEventListener('keydown',e=>{if(e.target.closest&&e.target.closest('input,button'))return;if(e.key==='ArrowRight'){stop();go(cur+1)}if(e.key==='ArrowLeft'){stop();go(cur-1)}});
 go(1,false);
 </script>

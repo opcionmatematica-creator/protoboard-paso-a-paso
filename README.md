@@ -1,6 +1,6 @@
 # protoboard-paso-a-paso
 
-Skill de Claude Code que convierte un esquemático en una **animación HTML paso a paso de cómo montarlo en protoboard**. La animación indica los huecos exactos de cada pata (`4c`, `33h`…), la orientación de cada transistor, el código de colores de los cables y una nota «Para la sustentación» en cada paso. Termina con una prueba interactiva que muestra el camino de la corriente. Antes de entregar, un script comprueba que la protoboard tiene exactamente las mismas redes que el esquema.
+Skill de Claude Code que convierte un esquemático en una **animación HTML paso a paso de cómo montarlo en protoboard**. La animación indica los huecos exactos de cada pata (`4c`, `33h`…), la orientación de cada transistor, el código de colores de los cables y una nota «Para la sustentación» en cada paso. Al tocar cualquier pieza o cable se abre una ficha que dice qué es, qué hace, en qué huecos y nodos están sus patas y con qué otras piezas está unida. La animación termina con una prueba interactiva que muestra el camino de la corriente. Antes de entregar, un script comprueba que la protoboard tiene exactamente las mismas redes que el esquema.
 
 Abre `assets/ejemplo_puente_h.html` en el navegador para ver un ejemplo completo: el puente H con A715/D882 del anexo de una práctica de Electrónica Análoga.
 

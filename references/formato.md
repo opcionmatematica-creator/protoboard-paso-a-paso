@@ -55,6 +55,7 @@ const CONFIG={
 | `step` | Paso (empieza en 1) en que aparece la pieza. |
 | `type` | Uno de los tipos de abajo. |
 | `ref`, `val` | Referencia y valor del esquema (`'Q1'`, `'BD139'`). Las piezas con `ref` llevan etiqueta. |
+| `info` | Una o dos frases con qué es la pieza y qué hace en este circuito (admite HTML). Aparece en la ficha que se abre al tocar la pieza. Escríbelo para todas las piezas y cables. |
 | `nets` | Nombre de red de cada pata, en el mismo orden que las patas. El verificador lo usa. |
 | `z` | Capa: 1 cables (predeterminado), 2 componentes, 3 encima de todo (cables largos que deben verse sobre los componentes). |
 
@@ -108,6 +109,17 @@ Va a horcajadas sobre la canaleta. La pata 1 queda en `[c,'f']`, las patas 1…n
 - `pts`: polilínea. Solo los extremos que son huecos conectan; los puntos intermedios solo dan forma.
 - `curve`: Bézier cúbica. `c1` y `c2` son `[columna, y en px]`.
 - `sw`: cable interruptor. Su segundo punto es la posición de reposo y la prueba lo mueve. No cuenta como conexión fija en la verificación.
+
+## Ficha al tocar una pieza
+
+Al tocar una pieza o un cable (o al seleccionarlo con Tab y pulsar Enter) se resaltan sus huecos y se abre una ficha. La ficha muestra:
+
+- referencia, valor y tipo;
+- el texto de `info`;
+- una tabla con cada pata, su hueco, su nodo y las demás piezas unidas a ese nodo (calculadas a partir de `nets`);
+- el paso en que se monta, con un botón «Ir al paso».
+
+Se cierra con ×, con Esc o tocando la protoboard. No requiere más datos que `info`, pero los nombres de red de `nets` deben ser coherentes, porque de ellos sale la columna «Unida a».
 
 ## STEPS
 

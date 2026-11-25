@@ -62,6 +62,7 @@ Lee `references/disposicion.md` antes de colocar nada: geometría, tamaños de c
    - un **cuerpo** con los huecos exactos en `<code>` y la orientación («cara impresa hacia ti», «franja hacia la columna 9»);
    - cuando ayuda, un **pinout** (`pin`);
    - una nota **«Para la sustentación»** (`why`) con el porqué eléctrico y, si existen, los cálculos del documento del curso con su notación.
+   Además, dale a **cada pieza y cada cable** un campo `info` con una o dos frases sobre qué es y qué hace en este circuito. Al tocar una pieza en la protoboard se abre una ficha con ese texto, sus patas, huecos y nodos, y las piezas unidas a cada pata. Así el estudiante puede señalar cualquier componente y saber cuál es.
 5. Si el circuito tiene entradas o estados (puente H, compuertas, semáforo), añade el paso final de **prueba** (`test:true` y `CONFIG.prueba`). Ahí se mueven los cables interruptor, se resaltan las piezas que conducen y se anima el camino de la corriente. Usa valores calculados o simulados y di de dónde salen. No inventes lecturas.
 
 ### 5. Verifica (obligatorio)
