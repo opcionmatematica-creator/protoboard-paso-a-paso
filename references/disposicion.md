@@ -56,6 +56,13 @@ Lo que sigue salió de montar y verificar circuitos reales con esta plantilla. C
 - Cerámicos: escribe el código impreso en `code` (`104`). La animación lo traduce y así el estudiante lo encuentra entre sus piezas.
 - Los condensadores de desacople (100 nF) van lo más cerca posible de las patas de alimentación del integrado.
 
+## Placas de desarrollo y microcontroladores
+
+- Lee `references/microcontroladores.md`: separación entre filas, filas posibles y pinouts. Si la placa no está ahí, investígala antes de dibujarla.
+- La placa tapa sus columnas entre las dos filas de pines; solo quedan libres los huecos de fuera. Planifica qué pines usas y deja el USB hacia el borde, con esos pines cerca de la zona libre.
+- Cada señal sale por un hueco libre de la columna del pin (por ejemplo, la fila h o la i para un pin de la fila g) y viaja con un cable recto por filas distintas hasta los demás componentes.
+- Ejemplo verificado: `assets/ejemplo_arduino_nano.html`.
+
 ## Dos protoboards
 
 Usa `tableros:2` cuando el circuito no cabe en una protoboard con buena separación. Señales para decidirlo: más de unas 45 columnas ocupadas en la de 400 puntos (o de 60 en la de 830), filas tan llenas que los cuerpos se tocan, o bloques que conviene separar (potencia y lógica, alta corriente y señal).
@@ -94,5 +101,5 @@ Entre dos y seis piezas por paso funciona bien. Más de eso hace difícil seguir
 
 - Escribe la orientación en palabras que se vean en la pieza: «cara impresa hacia ti», «placa metálica hacia la canaleta», «franja hacia la columna 9», «pata larga en 20h».
 - Escribe los huecos siempre en `<code>`, como columna + fila.
-- En «Para la sustentación» explica la función de la pieza y el cálculo con la notación del curso (IB1, VB5…). Sirve para la evaluación oral.
+- En la nota de cada paso (`why`, «Cómo funciona») explica la función de la pieza y el cálculo que la justifica. Si el usuario trae un documento (guía, anexo, enunciado), usa su notación y sus valores; si es para una evaluación oral, pon `notaTitulo:'Para la sustentación'`.
 - Advierte los estados prohibidos (cortocircuitos) en el paso de prueba, con la corriente que circularía.

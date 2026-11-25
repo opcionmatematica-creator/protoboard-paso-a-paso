@@ -1,82 +1,90 @@
 ---
 name: protoboard-paso-a-paso
-description: Convierte un esquemático (KiCad .kicad_sch, PDF, imagen, foto de un dibujo o netlist SPICE) en una animación HTML paso a paso de cómo montarlo en protoboard, con huecos exactos (p. ej. «4c»), orientación de cada transistor, código de colores de cables, notas para la sustentación y una prueba interactiva final; luego verifica con un script que cada conexión de la protoboard coincide con las redes del esquema. Úsala siempre que alguien pida montar, armar, cablear o pasar un circuito a la protoboard (breadboard), una guía o animación de montaje, «cómo lo pongo en la protoboard», revisar si un montaje coincide con el esquema, o prepare una práctica de laboratorio de electrónica a partir de un diagrama, aunque no diga «animación».
+description: A partir de cualquier esquemático electrónico (imagen, foto de un dibujo a mano, captura de pantalla, PDF, archivo de KiCad, EasyEDA, Eagle, LTspice, Proteus, Multisim, Fritzing, Falstad o una netlist SPICE) genera una animación HTML paso a paso de cómo montar el circuito en protoboard. La animación indica los huecos exactos (p. ej. «4c»), la orientación de cada transistor, diodo, LED o condensador, los microcontroladores y placas (Arduino Nano, ESP32, Raspberry Pi Pico…) dibujados vistos desde arriba con sus pines, el código de colores de los cables y una ficha al tocar cada pieza. Termina con una prueba interactiva y verifica con un script que la protoboard tiene las mismas conexiones que el esquema. Úsala siempre que alguien comparta un esquema o circuito y quiera montarlo, armarlo, cablearlo o pasarlo a la protoboard (breadboard), pida una guía o animación de montaje, pregunte «cómo lo pongo en la protoboard» o quiera revisar si un montaje coincide con el esquema, aunque no diga «animación».
 ---
 
 # Protoboard paso a paso
 
-Convierte un esquema en una página HTML que anima el montaje pieza por pieza sobre una protoboard dibujada a escala. Cada paso indica en qué huecos va cada pata. El valor de la página está en que sea **correcta**: un estudiante la seguirá literalmente, así que una pata en el hueco equivocado es peor que no tener animación. Por eso el flujo termina siempre con una verificación automática de redes.
+El usuario te pasa un esquemático y tú le entregas una página HTML que anima el montaje pieza por pieza sobre una protoboard dibujada a escala. Cada paso dice en qué huecos va cada pata. La página tiene que ser **correcta**: quien la use la seguirá al pie de la letra, y una pata en el hueco equivocado es peor que no tener animación. Por eso el flujo termina siempre con una verificación automática de conexiones.
 
-Todo el dibujo y la animación ya están resueltos en `assets/plantilla.html`. Tu trabajo es entender el circuito, decidir la disposición y escribir solo los **datos** (CONFIG, PARTS, STEPS). En `assets/` hay tres ejemplos completos y verificados; mira el más parecido antes de escribir el primero:
+El dibujo y la animación ya están resueltos en `assets/plantilla.html`. Tu trabajo es entender el circuito, decidir la disposición y escribir solo los **datos** (CONFIG, PARTS, STEPS). En `assets/` hay cuatro ejemplos verificados; mira el más parecido antes de escribir:
 
-- `ejemplo_puente_h.html`: transistores de potencia, drivers, entradas y prueba de giro;
-- `ejemplo_leds.html`: LEDs con resistencia y un interruptor;
-- `ejemplo_555_dos_protoboards.html`: integrado DIP, condensadores y un circuito repartido en dos protoboards.
+- `ejemplo_leds.html`: LEDs con resistencia e interruptor (circuito simple);
+- `ejemplo_arduino_nano.html`: Arduino Nano con dos LEDs;
+- `ejemplo_555_dos_protoboards.html`: integrado DIP, condensadores y un circuito repartido en dos protoboards;
+- `ejemplo_puente_h.html`: transistores de potencia, transistores de mando, entradas y prueba de giro.
 
 ## Requisitos
 
-Ejecuta `bash scripts/comprobar_herramientas.sh` al empezar: dice qué está instalado y qué falta.
-
-| Herramienta | Para qué | ¿Obligatoria? |
+| Requisito | Para qué | ¿Obligatorio? |
 |---|---|---|
-| Node.js ≥ 18 | `scripts/verificar_protoboard.cjs` (verificación de redes) | Sí |
-| Python 3 | `scripts/netlist_a_json.py` y servidor local para revisar la página | Sí |
-| Navegador web moderno | Ver la animación (el HTML funciona con doble clic) | Sí |
-| KiCad 7/8 con `kicad-cli` | Esquemas `.kicad_sch` y simulación con ngspice | Si la entrada es KiCad |
-| poppler-utils (`pdftoppm`, `pdftotext`) | Recortar y leer figuras de un PDF | Si la entrada es PDF |
-| Playwright (MCP) u otro navegador automatizable | Una captura de revisión antes de entregar | Opcional |
-| Herramienta Artifact (claude.ai) | Publicar la página con un enlace | Opcional |
+| Node.js ≥ 18 | Verificar las conexiones (`scripts/verificar_protoboard.cjs`) | Sí |
+| Python 3 | Servidor local para revisar la página y scripts auxiliares | Sí |
+| Navegador web | Ver la animación (el `.html` se abre con doble clic) | Sí |
+| Software de simulación de circuitos (cualquiera: KiCad, LTspice, Proteus, Multisim, Falstad…) | Obtener voltajes y corrientes para la prueba interactiva | Opcional |
 
-Con conexión a internet la página usa las fuentes IBM Plex de Google Fonts; sin conexión usa las del sistema y funciona igual.
+`bash scripts/comprobar_herramientas.sh` dice qué hay instalado. Sin simulador, los valores de la prueba se calculan a mano (ley de Ohm, fórmulas del circuito) y se indica que son calculados.
 
 ## Flujo
 
-### 1. Saca las redes del esquema
+### 1. Entiende el esquema y saca sus conexiones
 
-El objetivo es un `redes.json` con la forma `{"REF:pin": "nombre_de_red"}`. Ese archivo es la fuente de verdad con la que se compara la protoboard.
+El objetivo es un `redes.json` con la forma `{"REF:pin": "nombre_de_red"}`: qué pata de qué componente va a qué nodo. Es la fuente de verdad con la que se compara la protoboard. Escríbelo según lo que te pasen:
 
-- **KiCad**: `python3 scripts/netlist_a_json.py esquema.kicad_sch redes.json`. Genera dos claves por pin cuando el símbolo tiene nombre de pin: el número (`Q1:1`) y la letra (`Q1:E`).
-- **PDF**: lee el texto con `pdftotext -layout`, para valores y notas. Recorta la figura a 250–300 ppp con `pdftoppm -r 260 -f N -l N -x X -y Y -W W -H H -png` y mírala. Sigue cada cable de punta a punta. Un punto relleno es unión; un cruce sin punto no lo es.
-- **Netlist SPICE** (`.cir`, `.net`): cada línea es un elemento con sus nodos en orden fijo. `Q` va con colector, base y emisor; `D` con ánodo y cátodo; `R` y `C` con nodo 1 y nodo 2; `X` sigue el orden de su `.subckt`. Pásalo a claves por letra (`Q1:C`, `Q1:B`, `Q1:E`).
-- **Imagen o foto**: mírala directamente. Si un trazo es ambiguo, pregunta antes de suponer.
-- Escribe el JSON a mano con claves por letra (`Q1:E`, `D1:A`, `D1:K`, `C1:+`, `C1:-`, `U1:3`, `R1:1`/`R1:2`) y nombres de red que se entiendan (`MA`, `B_Q1`, `GND`, `+6V`).
+- **Imagen, foto, captura o PDF**: míralo con atención. En un PDF, si la figura es pequeña, recórtala a 250–300 ppp; con poppler sería `pdftoppm -r 260 -f N -l N -x X -y Y -W W -H H -png`. Sigue cada cable de punta a punta. Un punto relleno es unión; un cruce sin punto no lo es. Lee valores y referencias. Si un trazo es ambiguo, pregunta antes de suponer.
+- **Archivo de un programa de diseño**:
+  - KiCad: `python3 scripts/netlist_a_json.py esquema.kicad_sch redes.json`, si está `kicad-cli`.
+  - Otro programa: pide o exporta su netlist (casi todos exportan SPICE), o lee el archivo; muchos son texto.
+  - Si no se puede, trabaja desde una captura.
+- **Netlist SPICE**: cada línea es un elemento con sus nodos en orden fijo. `Q` va con colector, base y emisor; `D` con ánodo y cátodo; `R` y `C` con nodo 1 y nodo 2; `X` sigue el orden de su `.subckt`.
 
-Si hay **más de una fuente** (por ejemplo, un KiCad hecho antes y el PDF del profesor), compáralas antes de montar nada y avisa de las diferencias. El documento del curso manda sobre lo que se haya dibujado después. Montar sobre la fuente equivocada obliga a rehacerlo todo.
+Escribe las claves por letra o por nombre de pata: `Q1:E`, `D1:A`, `D1:K`, `C1:+`, `C1:-`, `U1:3` (pata de un DIP), `U1:D9` (pin de una placa) y `R1:1`/`R1:2` (sin orden). Usa nombres de red que se entiendan (`VCC`, `GND`, `B_Q1`, `SALIDA`).
 
-### 2. Lista de materiales y pinouts físicos
+Revisa estos huecos del esquema:
 
-Para cada semiconductor, anota el encapsulado y el orden **físico** de patas. La numeración del símbolo del esquema no siempre coincide con el orden de las patas. Consulta `references/pinouts.md`. Si no conoces con seguridad el pinout de una referencia, dilo en el paso correspondiente y pide confirmarlo con la hoja de datos o con el multímetro en prueba de diodo. No lo inventes.
+- **Valores que faltan** (voltaje de la fuente, valor de un componente): elige uno razonable y dilo en el informe.
+- **Más de una fuente** (por ejemplo, un archivo propio y el esquema de una guía): compáralas antes de montar y avisa de las diferencias. Manda el documento original que te dieron.
+- **Esquema leído de una imagen**: incluye en el informe una tabla corta con las redes, para que el usuario confirme que la lectura fue correcta.
+
+### 2. Lista de materiales y patas físicas
+
+Para cada semiconductor, anota el encapsulado y el orden **físico** de las patas. La numeración del símbolo no siempre coincide con el orden físico. Consulta `references/pinouts.md`. Si no conoces con seguridad el pinout de una referencia, dilo en el paso correspondiente y pide confirmarlo con la hoja de datos o con el multímetro. No lo inventes.
+
+**Microcontroladores y placas de desarrollo** (Arduino Nano, ESP32, Raspberry Pi Pico, NodeMCU, ATmega328P, ATtiny85…): lee `references/microcontroladores.md`. Si la placa no está ahí o tienes dudas de la versión, **investígala** antes de dibujarla: busca en la web el pinout oficial visto desde arriba, el número de pines por lado, la separación entre filas en décimas de pulgada y el lado del USB. Cita la fuente en el informe. Las placas se dibujan con el tipo `modulo` y los microcontroladores DIP con `dip`. Las placas que no entran en una protoboard (Arduino Uno o Mega) quedan fuera y se conectan con cables.
 
 ### 3. Diseña la disposición
 
-Lee `references/disposicion.md` antes de colocar nada: geometría, tamaños de cuerpo, cómo evitar solapes y cruces, rieles, cables interruptor y orden de los pasos. Las ideas clave:
+Lee `references/disposicion.md` antes de colocar nada: geometría, tamaños de cuerpo, solapes, rieles, cables interruptor, LEDs, condensadores, placas, dos protoboards y orden de los pasos. Las ideas clave:
 
-- **Que la protoboard se parezca al esquema**: el mismo orden izquierda/derecha y arriba/abajo, y las entradas del mismo lado. El estudiante tiene que poder señalar una pieza en el esquema y encontrarla en la protoboard. Si la disposición se aparta del dibujo, la percibirá como un error aunque eléctricamente sea idéntica.
+- **Que la protoboard se parezca al esquema**: mismo orden izquierda/derecha y arriba/abajo, alimentación arriba y tierra abajo como en el dibujo, y entradas y salidas del mismo lado. Quien monta compara mirando; si una pieza aparece en otro lado, lo toma por error.
 - Cada columna de cinco huecos es un nodo. Planifica con una tabla columna por columna (qué red es y qué fila usa cada pata) antes de escribir datos.
-- Un hueco, una pata. Los cables largos van por filas distintas para no cruzarse.
-- **Cables siempre rectos**: un solo tramo horizontal o vertical. Las esquinas las hacen las columnas de la protoboard (un cable llega a una columna y otro sale desde otro hueco de ella). El verificador rechaza curvas y diagonales.
-- **¿Una o dos protoboards?** Si el circuito no cabe con holgura (más de unas 45 columnas en una de 400 puntos, filas tan llenas que los cuerpos se tocan, o bloques que conviene separar), usa `tableros:2`. Divide por bloques funcionales, une GND y la alimentación entre las dos y pasa el menor número de señales posible.
-- **LEDs** siempre con su resistencia en serie, calculada; patas en columnas contiguas y polaridad explicada. **Electrolíticos** con el hueco del positivo dicho en el texto. **Cerámicos** con su código (`104`).
+- Un hueco, una pata.
+- **Cables siempre rectos**: un solo tramo horizontal o vertical. Las esquinas las hacen las columnas de la protoboard. El verificador rechaza curvas y diagonales.
+- **¿Una o dos protoboards?** Si el circuito no cabe con holgura, usa `tableros:2`. Divide por bloques, une GND y la alimentación entre las dos y pasa pocas señales.
+- **Placas de desarrollo**: tapan las columnas que ocupan, así que solo quedan libres las filas de fuera. Saca cada señal por un hueco libre de la columna del pin y llévala con un cable recto hasta una zona libre.
+- **LEDs** con su resistencia en serie, calculada. **Electrolíticos** con el hueco del + dicho en el texto. **Cerámicos** con su código (`104`).
 - Código de colores constante: rojo para alimentación, negro (o verde) para tierra, otros colores para señal, y el mismo color para la misma función.
 
 ### 4. Escribe la página
 
-1. Copia `assets/plantilla.html` al destino, junto a los archivos del usuario, con un nombre descriptivo (`montaje_<circuito>.html`).
-2. Cambia `__TITULO__` en `<title>` por un nombre corto. No hace falta tocar el motor.
-3. Rellena el bloque entre `// DATOS-INICIO` y `// DATOS-FIN` con CONFIG, PARTS y STEPS. El formato completo de cada pieza y cada paso está en `references/formato.md`. El bloque debe contener solo datos literales, porque el verificador lo evalúa por separado.
-4. Cada paso necesita:
+1. Copia `assets/plantilla.html` junto a los archivos del usuario, o en el directorio de trabajo, como `montaje_<circuito>.html`.
+2. Cambia `__TITULO__` en `<title>` por un nombre corto. No toques el motor.
+3. Rellena el bloque entre `// DATOS-INICIO` y `// DATOS-FIN` con CONFIG, PARTS y STEPS, siguiendo `references/formato.md`. Solo datos literales, porque el verificador evalúa el bloque por separado.
+4. Cada paso lleva:
    - un **título** con la acción;
-   - un **cuerpo** con los huecos exactos en `<code>` y la orientación («cara impresa hacia ti», «franja hacia la columna 9»);
+   - un **cuerpo** con los huecos exactos en `<code>` y la orientación («cara plana hacia ti», «franja hacia la columna 9», «+ en 8j», «USB hacia la derecha»);
    - cuando ayuda, un **pinout** (`pin`);
-   - una nota **«Para la sustentación»** (`why`) con el porqué eléctrico y, si existen, los cálculos del documento del curso con su notación.
-   Además, dale a **cada pieza y cada cable** un campo `info` con una o dos frases sobre qué es y qué hace en este circuito. Al tocar una pieza en la protoboard se abre una ficha con ese texto, sus patas, huecos y nodos, y las piezas unidas a cada pata. Así el estudiante puede señalar cualquier componente y saber cuál es.
-5. Si el circuito tiene entradas o estados (puente H, compuertas, semáforo, LEDs que encienden), añade el paso final de **prueba** (`test:true` y `CONFIG.prueba`). Ahí:
+   - una nota **«Cómo funciona»** (`why`) con el porqué eléctrico y el cálculo, si lo hay.
+
+   Si el usuario lo prepara para una evaluación o un curso, usa la notación de su documento y, si quiere, `notaTitulo:'Para la sustentación'`. Si hay un microcontrolador, incluye en un paso (`extra`) el programa mínimo que hace funcionar el montaje.
+5. Cada pieza y cada cable lleva `info`: una o dos frases con qué es y qué hace en este circuito. Aparece en la ficha al tocar la pieza.
+6. Si el circuito tiene estados que se puedan ver (LEDs que encienden, entradas, un motor, un oscilador, pines de un microcontrolador), añade el paso final de **prueba** (`test:true` y `CONFIG.prueba`). En ella:
    - se mueven los cables interruptor;
    - se resaltan las piezas que conducen;
    - se encienden los LEDs (`luces`);
-   - se anima el camino de la corriente, que el estudiante muestra u oculta con el botón «⚡ Corriente».
+   - se anima el camino de la corriente, con el botón «⚡ Corriente».
 
-   Usa valores calculados o simulados y di de dónde salen. No inventes lecturas.
+   Usa valores simulados (con el simulador que tenga el usuario) o calculados, y di de dónde salen. No inventes lecturas.
 
 ### 5. Verifica (obligatorio)
 
@@ -87,35 +95,39 @@ node scripts/verificar_protoboard.cjs montaje.html redes.json
 Comprueba:
 
 - que no haya huecos repetidos;
+- que los cables sean rectos;
 - que cada conexión a un riel caiga en un hueco que existe;
-- la coherencia interna de los nombres de red;
-- que la partición de redes de la protoboard sea igual a la del esquema.
+- que la separación entre filas de cada placa coincida con la real (`separacion`);
+- la coherencia de los nombres de red;
+- que la protoboard tenga exactamente las mismas conexiones que el esquema.
 
-Corrige hasta que diga `OK`. Los pines del esquema que no son piezas físicas (fuentes, generadores, el motor fuera de la protoboard) se declaran en `CONFIG.externos` con el hueco donde se conectan. No entregues una página que no haya pasado la verificación. Si no hay `redes.json` (por ejemplo, un dibujo a mano sin netlist), ejecuta al menos la verificación interna, sin el segundo argumento, y dilo en el informe.
+Corrige hasta que diga `OK`. Los pines del esquema sin pieza física (fuente, generador de señal, motor fuera de la protoboard, Arduino Uno) se declaran en `CONFIG.externos` con el hueco donde se conectan. Los avisos de patas que el esquema no tiene (por ejemplo, la tercera pata de un potenciómetro usado como resistencia variable) se aceptan si son intencionales; explícalos en el informe. No entregues una página que no haya pasado la verificación.
 
 ### 6. Revisa una vez y entrega
 
-`file://` suele estar bloqueado para los navegadores automatizados. Sirve la carpeta con `python3 -m http.server 8765 --bind 127.0.0.1` y toma **una** captura del último paso con «Mostrar todas las etiquetas» activado. Busca cuerpos solapados, cables que pasan sobre la pata de otra pieza y etiquetas ilegibles. Corrige lo que veas y apaga el servidor. Después:
+Sirve la carpeta con `python3 -m http.server 8765 --bind 127.0.0.1`, porque los navegadores automatizados suelen bloquear `file://`. Toma **una** captura del último paso con «Mostrar todas las etiquetas» activado. Busca cuerpos solapados, cables que pasan sobre la pata de otra pieza y etiquetas ilegibles. Corrige lo que veas y apaga el servidor. Después:
 
 - si hay herramienta Artifact, publica la página (es privada por defecto) y da el enlace;
-- si no, da la ruta del archivo: se abre con doble clic.
+- si no, da la ruta del archivo: se abre con doble clic en cualquier navegador.
 
 ### 7. Informa
 
 En pocas líneas:
 
-- de dónde salieron las redes;
-- qué verificaste y con qué resultado (pega la línea del verificador);
-- qué supuestos hiciste (pinouts, valores no fijados, piezas sustituidas);
-- qué debe comprobar el estudiante físicamente: orientación de semiconductores, rieles partidos, límite de corriente de la fuente.
+- de dónde salieron las conexiones (y la tabla de redes, si las leíste de una imagen);
+- de dónde salió el pinout de cada placa;
+- el resultado de la verificación (pega la línea `OK`);
+- los supuestos: pinouts, valores que faltaban, piezas agregadas o sustituidas;
+- qué debe comprobar quien monte: orientación de semiconductores y condensadores, versión de la placa, rieles partidos y límite de corriente de la fuente.
 
 ## Archivos
 
-- `assets/plantilla.html`: motor de dibujo y animación. Copiar y rellenar.
-- `assets/ejemplo_puente_h.html`, `ejemplo_leds.html` y `ejemplo_555_dos_protoboards.html`: ejemplos verificados.
-- `scripts/verificar_protoboard.cjs`: verificación de huecos y redes.
-- `scripts/netlist_a_json.py`: de KiCad a `redes.json`.
+- `assets/plantilla.html`: motor de dibujo y animación. Se copia y se rellenan los datos.
+- `assets/ejemplo_*.html` (con su `.redes.json`): ejemplos verificados.
+- `scripts/verificar_protoboard.cjs`: verificación de huecos, cables y conexiones.
+- `scripts/netlist_a_json.py`: de KiCad a `redes.json` (opcional, necesita `kicad-cli`).
 - `scripts/comprobar_herramientas.sh`: comprueba los requisitos.
 - `references/formato.md`: campos de CONFIG, PARTS y STEPS.
 - `references/disposicion.md`: reglas de disposición y geometría.
-- `references/pinouts.md`: pinouts físicos comunes y numeración de KiCad.
+- `references/pinouts.md`: pinouts físicos comunes, LEDs, códigos de condensadores y numeración de KiCad.
+- `references/microcontroladores.md`: placas y microcontroladores vistos desde arriba, y cómo investigar uno nuevo.

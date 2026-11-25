@@ -1,6 +1,6 @@
 # protoboard-paso-a-paso
 
-Skill de Claude Code que convierte un esquemático en una **animación HTML paso a paso de cómo montarlo en protoboard**. La animación indica los huecos exactos de cada pata (`4c`, `33h`…), la orientación de cada transistor, el código de colores de los cables y una nota «Para la sustentación» en cada paso. Al tocar cualquier pieza o cable se abre una ficha que dice qué es, qué hace, en qué huecos y nodos están sus patas y con qué otras piezas está unida. La animación termina con una prueba interactiva que muestra el camino de la corriente. Antes de entregar, un script comprueba que la protoboard tiene exactamente las mismas redes que el esquema.
+Skill de Claude Code: **le pasas un esquemático y te monta la animación paso a paso de cómo armarlo en protoboard**. El esquemático puede ser una imagen, una foto de un dibujo a mano, una captura, un PDF, un archivo de KiCad, EasyEDA, Eagle, LTspice, Proteus, Multisim o Fritzing, o una netlist SPICE. La animación indica los huecos exactos de cada pata (`4c`, `33h`…), la orientación de cada transistor, el código de colores de los cables y una nota «Para la sustentación» en cada paso. Al tocar cualquier pieza o cable se abre una ficha que dice qué es, qué hace, en qué huecos y nodos están sus patas y con qué otras piezas está unida. La animación termina con una prueba interactiva que muestra el camino de la corriente. Antes de entregar, un script comprueba que la protoboard tiene exactamente las mismas redes que el esquema.
 
 **Novedades:**
 
@@ -9,36 +9,30 @@ Skill de Claude Code que convierte un esquemático en una **animación HTML paso
 - **LEDs realistas**: lado plano, yunque y poste, 3 o 5 mm, color real. Se encienden en la prueba y su ficha muestra V<sub>F</sub> e I.
 - **Condensadores realistas**: cerámico con su código (104 = 100 nF), poliéster y multicapa; electrolítico visto desde arriba, con franja «−» y tapa de aluminio.
 - **Botón «⚡ Corriente»** para mostrar u ocultar la animación de la corriente.
+- **Microcontroladores y placas** (Arduino Nano, ESP32, Raspberry Pi Pico, NodeMCU, Wemos D1 mini, ATmega328P, ATtiny85): se dibujan vistos desde arriba con el nombre de cada pin. Si la placa es nueva, la skill investiga su pinout oficial y la separación entre filas antes de montarla.
 
 Abre los ejemplos de `assets/` en el navegador:
 
 - `ejemplo_puente_h.html`: el puente H con A715/D882 del anexo de una práctica de Electrónica Análoga;
 - `ejemplo_leds.html`: LEDs con resistencia e interruptor;
-- `ejemplo_555_dos_protoboards.html`: NE555 intermitente repartido en dos protoboards.
+- `ejemplo_555_dos_protoboards.html`: NE555 intermitente repartido en dos protoboards;
+- `ejemplo_arduino_nano.html`: Arduino Nano con dos LEDs y su programa.
 
 ## Requisitos
 
-| Herramienta | Para qué | ¿Obligatoria? |
+| Requisito | Para qué | ¿Obligatorio? |
 |---|---|---|
 | [Claude Code](https://claude.com/claude-code) | Ejecuta la skill | Sí |
-| Node.js ≥ 18 | Verificación de redes (`scripts/verificar_protoboard.cjs`) | Sí |
-| Python 3 | Conversor de KiCad (`scripts/netlist_a_json.py`) y servidor local de revisión | Sí |
-| Navegador web moderno | Ver la animación (doble clic en el `.html`) | Sí |
-| KiCad 7 u 8 (`kicad-cli`) | Leer esquemas `.kicad_sch` | Si el esquema es de KiCad |
-| poppler-utils (`pdftoppm`, `pdftotext`) | Recortar y leer figuras de un PDF | Si el esquema viene en PDF |
-| ngspice o el simulador de KiCad | Calcular los valores de la prueba interactiva | Opcional |
-| Playwright MCP | Captura de revisión antes de entregar | Opcional |
-| git y GitHub CLI (`gh`) | Instalar y actualizar la skill desde este repositorio | Opcional |
+| Node.js ≥ 18 | Verifica que la protoboard tenga las mismas conexiones que el esquema | Sí |
+| Python 3 | Servidor local de revisión y scripts auxiliares | Sí |
+| Navegador web | Ver la animación (doble clic en el `.html`) | Sí |
+| Un software de simulación de circuitos (el que uses: KiCad, LTspice, Proteus, Multisim, Falstad…) | Obtener voltajes y corrientes para la prueba interactiva | Opcional |
 
 Para comprobar qué tienes instalado:
 
 ```bash
 bash scripts/comprobar_herramientas.sh
 ```
-
-En Ubuntu o Debian: `sudo apt install nodejs python3 poppler-utils kicad`. En Windows y macOS, instala Node.js desde <https://nodejs.org>, Python desde <https://www.python.org> y KiCad desde <https://www.kicad.org>. Para usar `pdftoppm` y `pdftotext`, instala poppler: en macOS con `brew install poppler`; en Windows, con los binarios de poppler-windows.
-
-Las fuentes tipográficas se cargan de Google Fonts si hay internet. Sin conexión, la página usa las fuentes del sistema y funciona igual.
 
 ## Instalación
 
@@ -50,10 +44,14 @@ Reinicia Claude Code. La skill se activa sola cuando pides algo como «hazme la 
 
 ## Qué puede leer
 
-- Esquemas de KiCad (`.kicad_sch`)
-- PDF con la figura del circuito (guías de laboratorio, anexos)
-- Imágenes o fotos de un esquema
-- Netlists SPICE
+Cualquier esquemático:
+
+- imágenes, fotos (incluso de un dibujo a mano) o capturas de pantalla;
+- PDF (guías, anexos, datasheets);
+- archivos de KiCad, EasyEDA, Eagle, LTspice, Proteus, Multisim o Fritzing;
+- netlists SPICE.
+
+Con KiCad, si está `kicad-cli`, las conexiones se extraen automáticamente.
 
 ## Piezas que dibuja
 
@@ -62,7 +60,8 @@ Reinicia Claude Code. La skill se activa sola cuando pides algo como «hazme la 
 - Diodos y LED (3 y 5 mm, varios colores, encendidos en la prueba)
 - Condensadores cerámicos (con código), de poliéster, multicapa y electrolíticos
 - Potenciómetros
-- Circuitos integrados DIP de cualquier número de patas
+- Circuitos integrados y microcontroladores DIP de cualquier número de patas
+- Placas de desarrollo (Arduino Nano, ESP32, Raspberry Pi Pico…) y cristales de cuarzo
 - Cables rectos (horizontales o verticales) e «interruptor» para las entradas
 - Una o dos protoboards
 - Fuente de laboratorio y salidas a cargas externas, como un motor
@@ -74,11 +73,12 @@ SKILL.md                          instrucciones para Claude
 assets/plantilla.html             motor de dibujo y animación (se copia y se rellenan los datos)
 assets/ejemplo_*.html             ejemplos verificados (puente H, LEDs, 555 en dos protoboards)
 scripts/verificar_protoboard.cjs  verificación de huecos y redes contra el esquema
-scripts/netlist_a_json.py         KiCad → redes.json
+scripts/netlist_a_json.py         KiCad → redes.json (opcional)
 scripts/comprobar_herramientas.sh comprueba los requisitos
 references/formato.md             formato de CONFIG, PARTS y STEPS
 references/disposicion.md         reglas de disposición en la protoboard
-references/pinouts.md             pinouts físicos frecuentes y numeración de KiCad
+references/pinouts.md             pinouts físicos frecuentes, LEDs, condensadores y numeración de KiCad
+references/microcontroladores.md  placas y microcontroladores vistos desde arriba, y cómo investigar uno nuevo
 ```
 
 ## Verificar un montaje a mano

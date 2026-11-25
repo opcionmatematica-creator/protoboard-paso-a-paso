@@ -78,6 +78,8 @@ table.conn td{border-bottom:1px solid var(--line);padding:7px 10px 7px 0;vertica
 table.conn td.h{font-family:var(--f-mono);white-space:nowrap;font-variant-numeric:tabular-nums}
 .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px;border:1px solid rgba(0,0,0,.35)}
 .why{background:var(--surface-2);border-radius:10px;padding:12px 14px;margin-top:6px}
+.card pre{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow-x:auto;font-size:13px;line-height:1.5;margin:0 0 12px}
+.card pre code{border:0;padding:0;background:none}
 .why .kicker{display:block;margin-bottom:4px}
 .why p{margin:0}
 .pins{display:flex;flex-wrap:wrap;gap:12px;margin:4px 0 14px}
@@ -193,6 +195,7 @@ const CONFIG={
   entradas:{paso:10,items:[{c:7,txt:'A'},{c:31,txt:'B'}]},
   leyenda:[['red','Rojo: alimentación (+6 V y +5 V)'],['black','Negro: tierra (GND)'],['yellow','Amarillo: salidas MA y MB'],
     ['orange','Naranja: emisor de mando → base del NPN'],[['blue','violet'],'Azul y violeta: colectores de Q5 y Q6 → R1 y R2'],['white','Blanco: entradas A y B']],
+  notaTitulo:'Para la sustentación',
   externos:{'M1:1':[4,'a'],'M1:2':[34,'a'],'VM:1':[1,'T+'],'VM:2':[1,'B-'],'VA:1':[7,'i'],'VA:2':[1,'B-'],'VB:1':[31,'g'],'VB:2':[1,'B-']},
   prueba:{
     lecturas:[['V(MA)','ma'],['V(MB)','mb'],['I girando','im'],['I frenado','imf']],
@@ -482,6 +485,34 @@ function renderDIP(p){
   s+=`<text x="${(x0+x1)/2}" y="${ym+4}" text-anchor="middle" font-size="10" font-weight="700" fill="#e8eaed">${p.val||''}</text>`;
   return s+`</g>`;
 }
+// Placa de desarrollo vista desde arriba. p.dibujo copia el pinout oficial tal como se ve en la hoja de datos
+// (cara de componentes hacia arriba): usb 'arriba'|'abajo', izq y der = pines de cada lado de arriba hacia abajo.
+// p.usbLado: hacia dónde queda el USB en la protoboard ('izq'|'der'); p.filas: [fila de arriba, fila de abajo].
+function moduloPines(p){
+  const d=p.dibujo,ccw=(d.usb==='arriba')===(p.usbLado==='izq');
+  const sup=ccw?d.der.slice():d.izq.slice().reverse(),inf=ccw?d.izq.slice():d.der.slice().reverse();
+  return sup.map((nm,i)=>({name:nm,hole:[p.c+i,p.filas[0],p.tab]})).concat(inf.map((nm,i)=>({name:nm,hole:[p.c+i,p.filas[1],p.tab]})));
+}
+function moduloCaja(p){
+  const n=p.dibujo.izq.length,dy=dyB(p.tab);
+  return {x0:cx(p.c)-P*.62,x1:cx(p.c+n-1)+P*.62,y0:ROW[p.filas[0]]+dy-P*.72,y1:ROW[p.filas[1]]+dy+P*.72};
+}
+function renderModulo(p){
+  const {x0,x1,y0,y1}=moduloCaja(p),col=p.color||'#1d5fa8',mx=(x0+x1)/2,my=(y0+y1)/2;
+  let s=`<g class="drop" filter="url(#sh)"><rect x="${x0}" y="${y0}" width="${x1-x0}" height="${y1-y0}" rx="4" fill="${col}" stroke="${col.startsWith('#')?shade(col,.4):'#222'}" stroke-width="1.2"/>`;
+  const ux=p.usbLado==='izq'?x0-10:x1-4;
+  s+=`<rect x="${ux}" y="${my-15}" width="14" height="30" rx="2" fill="#c9ced6" stroke="#80868e"/><rect x="${ux+(p.usbLado==='izq'?2:5)}" y="${my-9}" width="7" height="18" rx="1" fill="#555b63"/>`;
+  if(p.chip){const w=Math.min(64,(x1-x0)*.32);s+=`<rect x="${mx-w/2}" y="${my-14}" width="${w}" height="28" rx="2" fill="#17181b"/><text x="${mx}" y="${my+2.5}" text-anchor="middle" font-size="6.5" font-weight="700" fill="#c9cdd3">${p.chip}</text>`}
+  if(p.antena){const ax=p.usbLado==='izq'?x1-30:x0+6;s+=`<rect x="${ax}" y="${my-20}" width="24" height="40" rx="2" fill="none" stroke="#e6c36a" stroke-width="1.6" stroke-dasharray="5 3"/>`}
+  for(const {name,hole} of moduloPines(p)){const q=hp(hole),top=hole[1]===p.filas[0];
+    s+=`<rect x="${q.x-3.8}" y="${q.y-3.8}" width="7.6" height="7.6" rx="1" fill="#d8b24a" stroke="#8a6d1d" stroke-width=".6"/><circle cx="${q.x}" cy="${q.y}" r="1.7" fill="#3a3220"/>`;
+    s+=`<text transform="translate(${top?q.x-2.3:q.x+2.3} ${top?q.y+6.5:q.y-6.5}) rotate(${top?90:-90})" font-size="6" font-weight="700" fill="#fff">${name}</text>`}
+  return s+`</g>`;
+}
+function renderXtal(p){ // cristal de cuarzo HC-49
+  const a=hp(p.a),b=hp(p.b),m={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+  return leads(a,b)+`<g class="drop"><g filter="url(#sh)"><rect x="${m.x-17}" y="${m.y-7}" width="34" height="14" rx="7" fill="#c9ced6" stroke="#7d838b"/><rect x="${m.x-13}" y="${m.y-4}" width="26" height="8" rx="4" fill="#e3e7ec"/></g><text x="${m.x}" y="${m.y+2.6}" text-anchor="middle" font-size="6.5" font-weight="700" fill="#33373c">${p.code||''}</text></g>`;
+}
 function renderPart(p){
   switch(p.type){
     case 'wire':return renderWire(p);
@@ -495,12 +526,15 @@ function renderPart(p){
     case 'to92':return renderTO92(p);
     case 'pot':return renderPot(p);
     case 'dip':return renderDIP(p);
+    case 'modulo':return renderModulo(p);
+    case 'xtal':return renderXtal(p);
   }
   throw new Error('tipo de pieza desconocido: '+p.type);
 }
 function holesOf(p){
   if(['to92','to126','to220','pot'].includes(p.type)) return [-1,0,1].map(k=>[p.c+k,p.r,p.tab]);
-  if(p.type==='res'||p.type==='cap') return [p.a,p.b];
+  if(p.type==='res'||p.type==='cap'||p.type==='xtal') return [p.a,p.b];
+  if(p.type==='modulo') return moduloPines(p).map(x=>x.hole);
   if(p.type==='diode'||p.type==='led') return [p.an,p.ka];
   if(p.type==='elec') return [p.pos,p.neg];
   if(p.type==='dip') return Array.from({length:p.n},(_,i)=>dipHole(p,i+1));
@@ -508,6 +542,7 @@ function holesOf(p){
 }
 function tagPos(p){
   if(['to92','to126','to220','pot'].includes(p.type)){const q=hp([p.c,p.r,p.tab]);return {x:q.x,y:isTop(p.r)?q.y-23:q.y+25}}
+  if(p.type==='modulo'){const k=moduloCaja(p);return {x:(k.x0+k.x1)/2,y:k.y0-10}}
   if(p.type==='dip'){return {x:(cx(p.c)+cx(p.c+p.n/2-1))/2,y:ROW.f+24+dyB(p.tab)}}
   const h=holesOf(p);const a=hp(h[0]),b=hp(h[1]);const top=isTop(h[0][1]);
   const o=(RSIZE[String(p.w)]||[0,14])[1]/2+8;
@@ -518,11 +553,12 @@ function tagSVG(p){
   return `<rect x="${x-w/2}" y="${y-8}" width="${w}" height="15" rx="4" fill="#132030" opacity=".93"/><text x="${x}" y="${y+3.2}" text-anchor="middle" font-size="9.5" font-weight="600" fill="#fff">${txt}</text>`;
 }
 // ---------- ficha de la pieza tocada ----------
-const TIPO={to92:'transistor · TO-92',to126:'transistor · TO-126',to220:'encapsulado TO-220',res:'resistencia',cap:'condensador',elec:'condensador electrolítico',diode:'diodo',led:'LED',dip:'circuito integrado',pot:'potenciómetro',wire:'cable'};
+const TIPO={modulo:'placa de desarrollo',xtal:'cristal',to92:'transistor · TO-92',to126:'transistor · TO-126',to220:'encapsulado TO-220',res:'resistencia',cap:'condensador',elec:'condensador electrolítico',diode:'diodo',led:'LED',dip:'circuito integrado',pot:'potenciómetro',wire:'cable'};
 const PATA={E:'emisor',B:'base',C:'colector',G:'compuerta',D:'drenador',S:'surtidor',A:'ánodo',K:'cátodo','+':'positivo','−':'negativo'};
 function patasDe(p){
   if(['to92','to126','to220','pot'].includes(p.type)) return p.pins.map((L,i)=>[L,[p.c-1+i,p.r,p.tab],p.nets[i]]);
-  if(p.type==='res'||p.type==='cap') return [['1',p.a,p.nets[0]],['2',p.b,p.nets[1]]];
+  if(p.type==='modulo') return moduloPines(p).filter(x=>(p.conex||{})[x.name]).map(x=>[x.name,x.hole,p.conex[x.name]]);
+  if(p.type==='res'||p.type==='cap'||p.type==='xtal') return [['1',p.a,p.nets[0]],['2',p.b,p.nets[1]]];
   if(p.type==='diode'||p.type==='led') return [['A',p.an,p.nets.an],['K',p.ka,p.nets.ka]];
   if(p.type==='elec') return [['+',p.pos,p.nets.pos],['−',p.neg,p.nets.neg]];
   if(p.type==='dip') return p.nets.map((n,i)=>[String(i+1),dipHole(p,i+1),n]);
@@ -610,6 +646,8 @@ function connRow(p){
   const sw=`<span class="sw" style="background:${C[p.color]||p.color||'#999'}"></span>`;
   if(['to92','to126','to220','pot'].includes(p.type)) return [`<b>${p.ref}</b> ${p.val||''}`,p.pins.map((L,i)=>`${L} ${hn([p.c-1+i,p.r,p.tab])}`).join(' · '),p.nets.map(nn).join(', ')];
   if(p.type==='res') return [`<b>${p.ref}</b> ${p.ohm||''}<br><span class="note">${p.bands.map(b=>BANDN[b]).join(', ')}</span>`,`${hn(p.a)} – ${hn(p.b)}`,`${nn(p.nets[0])} – ${nn(p.nets[1])}`];
+  if(p.type==='modulo'){const n=p.dibujo.izq.length;return [`<b>${p.ref}</b> ${p.val||''}`,`filas ${p.filas[0]} y ${p.filas[1]}, columnas ${p.c}–${p.c+n-1}${NB>1?' (P'+(p.tab||1)+')':''} · USB a la ${p.usbLado==='izq'?'izquierda':'derecha'}`,Object.entries(p.conex||{}).map(([k,v])=>`${k} → ${nn(v)}`).join('<br>')]}
+  if(p.type==='xtal') return [`<b>${p.ref}</b> ${p.val||''}`,`${hn(p.a)} – ${hn(p.b)}`,`${nn(p.nets[0])} – ${nn(p.nets[1])}`];
   if(p.type==='cap') return [`<b>${p.ref}</b> ${p.val||codigoCap(p.code)}${p.code?` <span class="note">(${p.code})</span>`:''}`,`${hn(p.a)} – ${hn(p.b)}`,`${nn(p.nets[0])} – ${nn(p.nets[1])}`];
   if(p.type==='diode'||p.type==='led') return [`<b>${p.ref}</b> ${p.val||''}`,`A ${hn(p.an)} · K ${hn(p.ka)}`,`${nn(p.nets.an)} → ${nn(p.nets.ka)}`];
   if(p.type==='elec') return [`<b>${p.ref}</b> ${p.val||''}`,`+ ${hn(p.pos)} · − ${hn(p.neg)}`,`${nn(p.nets.pos)} / ${nn(p.nets.neg)}`];
@@ -627,7 +665,7 @@ function renderCard(){
   if(ps.length) h+=`<div class="tblwrap"><table class="conn"><tr><th>Pieza</th><th>Huecos</th><th>Nodo</th></tr>${ps.map(p=>{const r=connRow(p);return `<tr><td>${r[0]}</td><td class="h">${r[1]}</td><td>${r[2]}</td></tr>`}).join('')}</table></div>`;
   if(s.extra) h+=s.extra;
   if(s.test&&T) h+=testHTML();
-  if(s.why) h+=`<div class="why"><span class="kicker">Para la sustentación</span><p>${s.why}</p></div>`;
+  if(s.why) h+=`<div class="why"><span class="kicker">${CONFIG.notaTitulo||'Cómo funciona'}</span><p>${s.why}</p></div>`;
   card.innerHTML=h;
   if(s.test&&T){card.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>setTest(b.dataset.s)));
     const fb=card.querySelector('.flujo-btn');

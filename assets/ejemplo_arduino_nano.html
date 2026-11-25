@@ -1,0 +1,678 @@
+<meta charset="utf-8">
+<title>Arduino Nano con LEDs</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Banco de laboratorio: la protoboard es el objeto físico (colores fijos); la página alrededor sigue el tema. */
+:root{
+  --bg:#e8ecf0; --surface:#ffffff; --surface-2:#f2f5f8; --ink:#15202b; --muted:#566273;
+  --line:#d2d9e1; --accent:#1d5bd8; --accent-soft:#e2ebfd; --warn:#b3261e; --warn-soft:#fdeae8;
+  --ok:#13774a; --ok-soft:#e1f3e9; --bench:#d6dde5;
+  --f-head:'IBM Plex Sans Condensed','Arial Narrow',system-ui,sans-serif;
+  --f-body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1318; --surface:#161d25; --surface-2:#1c252f; --ink:#e5eaf0; --muted:#98a4b3;
+  --line:#2a3542; --accent:#79a6ff; --accent-soft:#1b2a45; --warn:#ff8a7e; --warn-soft:#3a1d1b;
+  --ok:#62d69a; --ok-soft:#14301f; --bench:#121920; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0e1318; --surface:#161d25; --surface-2:#1c252f; --ink:#e5eaf0; --muted:#98a4b3;
+  --line:#2a3542; --accent:#79a6ff; --accent-soft:#1b2a45; --warn:#ff8a7e; --warn-soft:#3a1d1b;
+  --ok:#62d69a; --ok-soft:#14301f; --bench:#121920; color-scheme:dark }
+
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
+.wrap{max-width:1200px;margin:0 auto;padding-block:22px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:grid;gap:18px}
+h1{font-family:var(--f-head);font-weight:700;font-size:30px;line-height:1.1;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.sub{margin:4px 0 0;color:var(--muted);max-width:70ch}
+.kicker{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.stage{background:var(--bench);border-radius:14px;padding:10px;display:grid;gap:10px}
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.btn{font:600 14px/1 var(--f-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);
+  border-radius:8px;padding:9px 13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--accent)}
+.btn:focus-visible,.chip:focus-visible,.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] .btn.primary{color:#0b1220}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn.primary{color:#0b1220}}
+.btn[disabled]{opacity:.45;cursor:default}
+.counter{font-family:var(--f-mono);font-size:13px;color:var(--muted);margin-left:4px;font-variant-numeric:tabular-nums}
+.spacer{flex:1}
+.toggle{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--muted);cursor:pointer}
+.board-wrap{overflow-x:auto;border-radius:10px}
+.board-area{position:relative;min-width:760px}
+#bb{display:block;width:100%;height:auto}
+.hint{font-size:13px;color:var(--muted)}
+/* ficha de la pieza tocada */
+.ficha{position:absolute;z-index:5;width:min(350px,calc(100% - 16px));background:var(--surface);color:var(--ink);border:1px solid var(--line);
+  border-radius:12px;box-shadow:0 12px 32px rgba(10,20,35,.22);padding:12px 14px;font-size:13.5px;line-height:1.45}
+.ficha-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.ficha-h b{font-family:var(--f-head);font-size:19px}
+.pill{font:600 10.5px var(--f-mono);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:var(--surface-2);border-radius:999px;padding:2px 8px}
+.ficha .x{margin-left:auto;border:0;background:transparent;color:var(--muted);font-size:22px;line-height:1;cursor:pointer;padding:0 2px}
+.ficha p{margin:6px 0 0}
+.ficha .tw{overflow-x:auto}
+.ficha table{width:100%;border-collapse:collapse;margin:8px 0 6px}
+.ficha th,.ficha td{padding:4px 8px 4px 0;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.ficha th{font:600 10.5px var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.ficha td.h{font-family:var(--f-mono);white-space:nowrap}
+.ficha .pie{display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--muted);font-size:13px}
+.ficha .ir{font:600 13px var(--f-body);color:var(--accent);background:transparent;border:1px solid var(--line);border-radius:7px;padding:5px 9px;cursor:pointer;white-space:nowrap}
+.ficha .x:focus-visible,.ficha .ir:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.info{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.info{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px 22px;min-width:0}
+.card h2{font-family:var(--f-head);font-weight:700;font-size:23px;line-height:1.2;margin:4px 0 8px;text-wrap:balance}
+.card p{margin:0 0 12px;max-width:68ch}
+code,.mono{font-family:var(--f-mono);font-size:.92em}
+code{background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.tblwrap{overflow-x:auto;margin:6px 0 14px}
+table.conn{width:100%;border-collapse:collapse;font-size:14px}
+table.conn th{text-align:left;font:600 11.5px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+  border-bottom:1px solid var(--line);padding:6px 10px 6px 0}
+table.conn td{border-bottom:1px solid var(--line);padding:7px 10px 7px 0;vertical-align:top}
+table.conn td.h{font-family:var(--f-mono);white-space:nowrap;font-variant-numeric:tabular-nums}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px;border:1px solid rgba(0,0,0,.35)}
+.why{background:var(--surface-2);border-radius:10px;padding:12px 14px;margin-top:6px}
+.card pre{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow-x:auto;font-size:13px;line-height:1.5;margin:0 0 12px}
+.card pre code{border:0;padding:0;background:none}
+.why .kicker{display:block;margin-bottom:4px}
+.why p{margin:0}
+.pins{display:flex;flex-wrap:wrap;gap:12px;margin:4px 0 14px}
+.pins figure{margin:0;background:var(--surface-2);border-radius:10px;padding:8px 10px 6px;display:grid;justify-items:center;gap:2px}
+.pins figcaption{font-size:12.5px;color:var(--muted);text-align:center;max-width:150px;line-height:1.35}
+.pins svg{width:120px;height:auto}
+.pins svg text{font-family:var(--f-mono)}
+.pins .ink{fill:var(--ink)}
+aside{display:grid;gap:14px;min-width:0}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.chip{width:100%;text-align:left;font:500 14px/1.3 var(--f-body);color:var(--ink);background:transparent;border:0;border-radius:7px;
+  padding:7px 9px;cursor:pointer;display:grid;grid-template-columns:26px minmax(0,1fr);gap:6px;align-items:baseline}
+.chip .n{font-family:var(--f-mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.chip:hover{background:var(--surface-2)}
+.chip.done{color:var(--muted)}
+.chip.cur{background:var(--accent-soft);color:var(--ink);font-weight:600}
+.chip.cur .n{color:var(--accent)}
+.legend{display:grid;gap:6px;font-size:13.5px}
+.legend div{display:flex;gap:8px;align-items:center}
+.legend .sw{width:22px;height:6px;border-radius:3px;margin:0}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
+.seg button{font:600 14px var(--f-body);padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.reads{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:0 0 12px}
+.read{background:var(--surface-2);border-radius:9px;padding:8px 10px}
+.read .k{font:600 11px var(--f-mono);letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.read .v{font:600 19px var(--f-mono);font-variant-numeric:tabular-nums}
+.states{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.st{font:600 12.5px var(--f-mono);padding:3px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
+.st.on{background:var(--ok-soft);color:var(--ok)}
+.alert{background:var(--warn-soft);color:var(--ink);border-radius:10px;padding:10px 14px;font-size:14px}
+.alert b{color:var(--warn)}
+.note{font-size:13.5px;color:var(--muted)}
+/* ---------- SVG ---------- */
+#bb text{font-family:var(--f-mono)}
+.t-ink{fill:var(--ink)} .t-muted{fill:var(--muted)}
+.dec-box{fill:var(--surface);stroke:var(--line)}
+.rail-lab{font-size:11px;fill:var(--muted)}
+.step1 .rail-lab{fill:var(--accent);font-weight:600}
+.step1 .stripe{stroke-width:3.2}
+.part{display:none;cursor:pointer} .part.on{display:inline}
+.part:focus{outline:none}
+.part.on:hover,.part:focus-visible{filter:drop-shadow(0 0 2.5px #e0157a)}
+.part.sel{filter:drop-shadow(0 0 3px #e0157a) drop-shadow(0 0 1px #e0157a)}
+.selring{fill:none;stroke:#e0157a;stroke-width:2.6}
+.dec{display:none} .dec.on{display:inline}
+.tag{display:none;pointer-events:none} .tag.on{display:inline}
+.ring{fill:none;stroke:#e0157a;stroke-width:2;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{stroke-opacity:1;r:6.5}50%{stroke-opacity:.35;r:9}}
+.part.anim .drop{animation:drop .55s cubic-bezier(.2,.8,.25,1) both;animation-delay:var(--d,0s)}
+.part.anim .wp{stroke-dasharray:1;animation:draw .75s ease-out both;animation-delay:var(--d,0s)}
+.part.anim .pin{animation:fade .25s both;animation-delay:calc(var(--d,0s) + .6s)}
+@keyframes drop{from{opacity:0;transform:translateY(-34px)}to{opacity:1;transform:none}}
+@keyframes draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.testing .part.on:not(.active):not(.lit){opacity:.42}
+.halo{opacity:0;transition:opacity .25s}
+.part.lit .halo{opacity:.5}
+.part.lit .dome{fill-opacity:.95}
+.part.lit .core{opacity:.8}
+.flujo-btn{font:600 14px var(--f-body);padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);cursor:pointer;margin:0 0 12px}
+.flujo-btn[aria-pressed="true"]{background:#00a6d6;border-color:#00a6d6;color:#fff}
+.flujo-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tab-lab{font-size:11px;font-weight:600;letter-spacing:.08em;fill:var(--muted)}
+.part.active{filter:drop-shadow(0 0 3px #00c2ff) drop-shadow(0 0 1px #00c2ff)}
+.flow{fill:none;stroke:#00c2ff;stroke-width:3;stroke-dasharray:5 9;stroke-linecap:round;stroke-linejoin:round;animation:flow .55s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-14}}
+.lcd{fill:#20262c} .lit .lcd{fill:#173b22}
+.lcd-t{fill:#3a4249;font-size:10px;font-weight:600} .lit .lcd-t{fill:#7dff9e}
+@media (prefers-reduced-motion: reduce){.part.anim .drop,.part.anim .wp,.part.anim .pin,.ring,.flow{animation:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="kicker" id="kicker"></div>
+    <h1 id="titulo"></h1>
+    <p class="sub" id="sub"></p>
+  </header>
+  <section class="stage" aria-label="Protoboard">
+    <div class="toolbar">
+      <button class="btn" id="prev" type="button" aria-label="Paso anterior">◀ Anterior</button>
+      <button class="btn primary" id="play" type="button">▶ Reproducir</button>
+      <button class="btn" id="next" type="button" aria-label="Paso siguiente">Siguiente ▶</button>
+      <button class="btn" id="replay" type="button" aria-label="Repetir animación del paso">↻</button>
+      <span class="counter" id="counter"></span>
+      <span class="hint">· Toca una pieza para ver qué es</span>
+      <span class="spacer"></span>
+      <label class="toggle"><input type="checkbox" id="labels"> Mostrar todas las etiquetas</label>
+    </div>
+    <div class="board-wrap"><div class="board-area" id="area"><svg id="bb" aria-label="Protoboard con el montaje"></svg><div class="ficha" id="ficha" role="dialog" aria-label="Pieza seleccionada" hidden></div></div></div>
+  </section>
+  <div class="info">
+    <article class="card" id="card" aria-live="polite"></article>
+    <aside>
+      <div class="card"><div class="kicker" style="margin-bottom:8px">Pasos</div><ol class="steps" id="steps"></ol></div>
+      <div class="card"><div class="kicker" style="margin-bottom:8px">Código de colores</div><div class="legend" id="legend"></div></div>
+    </aside>
+  </div>
+</div>
+
+<script>
+// DATOS-INICIO  (solo datos: el verificador evalúa este bloque; no uses funciones del motor aquí)
+const CONFIG={
+  titulo:'Arduino Nano con dos LEDs',
+  kicker:'Ejemplo · protoboard-paso-a-paso',
+  sub:'Un Arduino Nano alterna dos LEDs en los pines D2 y D3. Se alimenta por el USB del computador.',
+  columnas:30,
+  huecoRiel0:4,
+  rieles:{'T-':'sin usar','T+':'sin usar','B-':'GND','B+':'sin usar'},
+  fuente:null,salidas:null,entradas:null,
+  leyenda:[['black','Negro: GND'],['orange','Naranja: pin D2'],['blue','Azul: pin D3']],
+  externos:{},
+  prueba:{
+    lecturas:[['Pin D2','p2'],['Pin D3','p3'],['I LED1','i1'],['I LED2','i2']],
+    chips:['LED1','LED2'],
+    estados:[
+      {id:'d2',boton:'D2 en HIGH',lecturas:{p2:'5 V',p3:'0 V',i1:'≈ 14 mA',i2:'0 mA'},encendidos:['LED1'],luces:['LED1'],
+       activos:['U1','wD2','R1','LED1','g3','gN'],
+       flujo:[[[16,'g'],[16,'h'],[8,'h'],[8,'f'],[4,'f'],[4,'i'],[3,'i'],[3,'j'],[3,'B-'],[15,'B-'],[15,'j'],[15,'g']]],
+       texto:'El pin D2 entrega 5 V: la corriente sale del pin, pasa por R1 y LED1 y vuelve al GND del Nano por el riel.'},
+      {id:'d3',boton:'D3 en HIGH',lecturas:{p2:'0 V',p3:'5 V',i1:'0 mA',i2:'≈ 13 mA'},encendidos:['LED2'],luces:['LED2'],
+       activos:['U1','wD3','R2','LED2','g1','gN'],
+       flujo:[[[17,'g'],[17,'i'],[6,'i'],[6,'g'],[2,'g'],[2,'i'],[1,'i'],[1,'j'],[1,'B-'],[15,'B-'],[15,'j'],[15,'g']]],
+       texto:'Ahora D3 entrega 5 V y enciende LED2. El programa alterna los dos estados cada 0,5 s.'},
+    ],
+    nota:'Valores calculados con I = (5 V − V<sub>F</sub>) / 220 Ω, con V<sub>F</sub> ≈ 1,9 V para el rojo y ≈ 2,1 V para el verde.',
+    alerta:'<b>Nunca conectes un LED a un pin sin resistencia.</b> Un pin del ATmega328P entrega como máximo 40 mA; lo recomendado son 20 mA.'},
+};
+const PARTS=[
+  {id:'U1',step:2,type:'modulo',ref:'U1',val:'Arduino Nano',chip:'ATmega328P',color:'#1d5fa8',c:12,filas:['c','g'],separacion:6,usbLado:'der',
+   dibujo:{usb:'arriba',
+     izq:['D13','3V3','REF','A0','A1','A2','A3','A4','A5','A6','A7','5V','RST','GND','VIN'],
+     der:['D12','D11','D10','D9','D8','D7','D6','D5','D4','D3','D2','GND','RST','RX0','TX1']},
+   conex:{'D2':'D2','D3':'D3','GND':'GND'},
+   info:'Arduino Nano (ATmega328P). Sus pines digitales D2 y D3 encienden los LEDs. Va a horcajadas sobre la canaleta, con el USB hacia la derecha.'},
+  {id:'gN',step:3,type:'wire',pts:[[15,'j'],[15,'B-']],color:'black',net:'GND',info:'GND del Nano (pin de la fila g, columna 15) al riel GND.'},
+  {id:'wD2',step:4,type:'wire',pts:[[16,'h'],[8,'h']],color:'orange',net:'D2',info:'Saca el pin D2 (columna 16) hasta la zona de los LEDs.'},
+  {id:'wD3',step:4,type:'wire',pts:[[17,'i'],[6,'i']],color:'blue',net:'D3',info:'Saca el pin D3 (columna 17) hasta la zona de los LEDs. Va por la fila i para no tocar el cable de D2.'},
+  {id:'R1',step:5,type:'res',a:[8,'f'],b:[4,'f'],ref:'R1',ohm:'220 Ω',bands:['red','red','brown','gold'],nets:['D2','A1'],
+   info:'Limita la corriente de LED1: (5 − 1,9) V / 220 Ω ≈ 14 mA, por debajo de los 20 mA recomendados por pin.'},
+  {id:'R2',step:5,type:'res',a:[6,'g'],b:[2,'g'],ref:'R2',ohm:'220 Ω',bands:['red','red','brown','gold'],nets:['D3','A2'],
+   info:'Limita la corriente de LED2: (5 − 2,1) V / 220 Ω ≈ 13 mA.'},
+  {id:'LED1',step:6,type:'led',an:[4,'i'],ka:[3,'i'],ref:'LED1',val:'LED rojo',color:'red',d:3,vf:'1,9 V',i:'14 mA',nets:{an:'A1',ka:'GND'},
+   info:'LED rojo de 3 mm, encendido cuando D2 está en HIGH.'},
+  {id:'g3',step:6,type:'wire',pts:[[3,'j'],[3,'B-']],color:'black',net:'GND',info:'Cátodo de LED1 a GND.'},
+  {id:'LED2',step:6,type:'led',an:[2,'i'],ka:[1,'i'],ref:'LED2',val:'LED verde',color:'green',d:3,vf:'2,1 V',i:'13 mA',nets:{an:'A2',ka:'GND'},
+   info:'LED verde de 3 mm, encendido cuando D3 está en HIGH.'},
+  {id:'g1',step:6,type:'wire',pts:[[1,'j'],[1,'B-']],color:'black',net:'GND',info:'Cátodo de LED2 a GND.'},
+];
+const STEPS=[
+ {t:'Orienta la protoboard',body:'Solo se usa el riel GND, abajo. El Nano se alimenta por el USB. Los huecos se nombran columna + fila: <code>16h</code> es columna 16, fila h.',
+  why:'Los dos LEDs comparten la tierra del Nano a través del riel GND.'},
+ {t:'Arduino Nano',body:'Pon el Nano a horcajadas sobre la canaleta, con los pines en las filas <b>c</b> y <b>g</b> de las columnas <code>12</code> a <code>26</code> y el <b>USB hacia la derecha</b>. En la fila g quedan, de izquierda a derecha, TX1, RX0, RST, GND, D2, D3…',
+  why:'El Nano tiene 0,6" entre sus filas de pines: en c y g le quedan 2 huecos libres por arriba y 3 por abajo en cada columna. Esos huecos libres son los que se usan para conectarlo.'},
+ {t:'Tierra',body:'Un cable negro va de <code>15j</code>, la columna del pin GND, al riel GND.',
+  why:'Sin la tierra común, los LEDs no tendrían por dónde devolver la corriente al Nano.'},
+ {t:'Cables de los pines D2 y D3',body:'Coloca el cable naranja <code>16h–8h</code> (D2) y el azul <code>17i–6i</code> (D3). Van por filas distintas.',
+  why:'Cada cable sale por un hueco libre de la columna del pin y lleva la señal a la zona izquierda, donde hay espacio para los LEDs.'},
+ {t:'Resistencias de 220 Ω',body:'R1 va en <code>8f–4f</code> y R2 en <code>6g–2g</code>. Las bandas son rojo, rojo, café y dorado.',
+  why:'R = (5 − V<sub>F</sub>) / I: con unos 14 mA, R ≈ 220 Ω. Así el pin no supera los 20 mA recomendados.'},
+ {t:'LEDs',body:'LED1 (rojo) va con el ánodo en <code>4i</code> y el cátodo en <code>3i</code>. LED2 (verde) va con el ánodo en <code>2i</code> y el cátodo en <code>1i</code>. Dos cables negros llevan los cátodos al riel GND: <code>3j</code> y <code>1j</code>.',
+  pin:[['led','red',false,'Pata larga = ánodo'],['led','green',false,'Lado plano = cátodo']],
+  why:'El ánodo va hacia la resistencia (el pin) y el cátodo hacia GND.'},
+ {t:'Programa',body:'Carga este programa con el IDE de Arduino: placa «Arduino Nano», procesador «ATmega328P».',
+  extra:'<pre><code>void setup() {\n  pinMode(2, OUTPUT);   // LED1\n  pinMode(3, OUTPUT);   // LED2\n}\nvoid loop() {\n  digitalWrite(2, HIGH); digitalWrite(3, LOW);  delay(500);\n  digitalWrite(2, LOW);  digitalWrite(3, HIGH); delay(500);\n}</code></pre>',
+  why:'Si no carga, prueba con el procesador «ATmega328P (Old Bootloader)»: muchos clones lo usan.'},
+ {t:'Prueba',test:true,body:'El programa alterna los LEDs. Elige un estado para ver por dónde va la corriente:'},
+];
+// DATOS-FIN
+
+// ================= motor (no hace falta tocarlo) =================
+const P=18,BX=110,BY=90,NC=CONFIG.columnas||40,BW=48+(NC-1)*P,BH=342,SAL_Y=44,JACK_X=70;
+const NB=CONFIG.tableros||1,OFF=372,dyB=b=>((b||1)-1)*OFF;   // protoboard 2 va debajo de la 1
+const rielesDe=b=>Array.isArray(CONFIG.rieles)?(CONFIG.rieles[(b||1)-1]||{}):(CONFIG.rieles||{});
+const cx=c=>BX+24+(c-1)*P;
+const ROW={'T-':108,'T+':126,a:162,b:180,c:198,d:216,e:234,f:288,g:306,h:324,i:342,j:360,'B-':396,'B+':414};
+const railHole=c=>(((c-(CONFIG.huecoRiel0??4))%6)+6)%6!==0;
+const C={red:'#d7263d',black:'#202124',green:'#2e9b4f',yellow:'#f2c230',orange:'#f08a24',blue:'#2f6fdc',violet:'#8e44c9',white:'#f7f7f4',gray:'#8a9199',brown:'#7b4a24'};
+const CNAME={red:'rojo',black:'negro',green:'verde',yellow:'amarillo',orange:'naranja',blue:'azul',violet:'violeta',white:'blanco',gray:'gris',brown:'café'};
+const BAND={black:'#1b1b1b',brown:'#7b4a24',red:'#cc2a2f',orange:'#e8731a',yellow:'#e6c21a',green:'#2e8b3a',blue:'#2c5fd0',violet:'#7d3fb0',gray:'#8f8f8f',white:'#f5f5f5',gold:'#c8a03c',silver:'#b8bcc2'};
+const BANDN={black:'negro',brown:'café',red:'rojo',orange:'naranja',yellow:'amarillo',green:'verde',blue:'azul',violet:'violeta',gray:'gris',white:'blanco',gold:'dorado',silver:'plateado'};
+const RAILN={'T+':'riel sup. +','T-':'riel sup. −','B-':'riel inf. −','B+':'riel inf. +'};
+const nn=n=>(n||'').replace(/^\+(\d+(?:\.\d+)?)V$/,'+$1 V');
+const isTop=r=>'abcde'.includes(r);
+function hp(h){
+  if(Array.isArray(h)) return {x:cx(h[0]),y:ROW[h[1]]+dyB(h[2])};
+  if(h.sal!==undefined) return {x:cx(h.sal),y:h.y??SAL_Y};
+  if(h.fuente!==undefined) return {x:JACK_X,y:ROW[h.fuente]+dyB(h.tab)};
+  return h;
+}
+function hn(h){
+  if(!Array.isArray(h)) return h.sal!==undefined?'salida':'fuente';
+  const pre=NB>1?`P${h[2]||1}·`:'',rn=rielesDe(h[2])[h[1]];
+  return pre+(h[1].length===1?h[0]+h[1]:(rn&&rn!=='sin usar'?'riel '+rn:RAILN[h[1]]));
+}
+const svg=document.getElementById('bb');
+const NS='http://www.w3.org/2000/svg';
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const VBW=BX+BW+64;
+const VY0=CONFIG.salidas?0:66,VYH=478+dyB(NB)-VY0-(CONFIG.entradas?0:34);   // sin salidas/entradas no se deja espacio vacío
+svg.setAttribute('viewBox',`0 ${VY0} ${VBW} ${VYH}`);
+function shade(hex,k){const n=parseInt(hex.slice(1),16);let r=n>>16,g=(n>>8)&255,b=n&255;return `rgb(${Math.round(r*(1-k))},${Math.round(g*(1-k))},${Math.round(b*(1-k))})`}
+
+function boardSVG(b){
+  let s=(NB>1?`<text class="tab-lab" x="${BX+4}" y="${BY-7}">PROTOBOARD ${b}</text>`:'')+`<rect x="${BX}" y="${BY}" width="${BW}" height="${BH}" rx="9" fill="#f5f3ec" stroke="#cdc8b8"/>`;
+  s+=`<line x1="${BX+8}" x2="${BX+BW-8}" y1="140" y2="140" stroke="#e2ddd0"/><line x1="${BX+8}" x2="${BX+BW-8}" y1="382" y2="382" stroke="#e2ddd0"/>`;
+  s+=`<rect x="${BX+8}" y="254" width="${BW-16}" height="14" rx="3" fill="#e4dfd2"/>`;
+  const st=(y,c)=>`<line class="stripe" x1="${BX+18}" x2="${BX+BW-18}" y1="${y}" y2="${y}" stroke="${c}" stroke-width="1.8"/>`;
+  s+=st(99,'#3d6fd1')+st(135,'#d23b3b')+st(387,'#3d6fd1')+st(423,'#d23b3b');
+  let holes='';
+  for(let c=1;c<=NC;c++){const x=cx(c);
+    for(const r of 'abcdefghij') holes+=`<rect x="${x-2.6}" y="${ROW[r]-2.6}" width="5.2" height="5.2" rx="1"/>`;
+    if(railHole(c)) for(const r of ['T-','T+','B-','B+']) holes+=`<rect x="${x-2.6}" y="${ROW[r]-2.6}" width="5.2" height="5.2" rx="1"/>`;}
+  s+=`<g fill="#47443c">${holes}</g>`;
+  let t='';
+  for(const r of 'abcdefghij') t+=`<text x="${BX+11}" y="${ROW[r]+3.5}" text-anchor="middle">${r}</text><text x="${BX+BW-11}" y="${ROW[r]+3.5}" text-anchor="middle">${r}</text>`;
+  for(let c=1;c<=NC;c++) if(c===1||c%5===0) t+=`<text x="${cx(c)}" y="151" text-anchor="middle">${c}</text><text x="${cx(c)}" y="376" text-anchor="middle">${c}</text>`;
+  s+=`<g fill="#8b8574" font-size="9">${t}</g>`;
+  const sg=(y,ch,col)=>`<text x="${BX+11}" y="${y+4}" text-anchor="middle" font-size="12" font-weight="700" fill="${col}">${ch}</text><text x="${BX+BW-11}" y="${y+4}" text-anchor="middle" font-size="12" font-weight="700" fill="${col}">${ch}</text>`;
+  s+=sg(108,'−','#3d6fd1')+sg(126,'+','#d23b3b')+sg(396,'−','#3d6fd1')+sg(414,'+','#d23b3b');
+  const lx=BX+BW+8;
+  for(const [r,y] of [['T-',112],['T+',130],['B-',400],['B+',418]]) s+=`<text class="rail-lab" x="${lx}" y="${y}">${rielesDe(b)[r]||'sin usar'}</text>`;
+  return `<g transform="translate(0 ${dyB(b)})">${s}</g>`;
+}
+function supplySVG(){
+  const F=CONFIG.fuente; if(!F) return '';
+  const yMax=Math.max(430,...(F.bornes||[]).map(b=>ROW[b.riel]+dyB(b.tab)+16));
+  let s=`<g id="psu"><rect x="6" y="94" width="76" height="${yMax-94}" rx="7" fill="#2b3139" stroke="#1a1e23"/>
+  <text x="44" y="${yMax-10}" text-anchor="middle" font-size="9.5" font-weight="600" fill="#d9dee4">FUENTE DC</text>`;
+  (F.lcd||[]).forEach((l,i)=>{const y=150+i*150;s+=`<rect class="lcd" x="13" y="${y}" width="62" height="40" rx="3"/><text class="lcd-t" x="44" y="${y+16}" text-anchor="middle">${l[0]}</text><text class="lcd-t" x="44" y="${y+31}" text-anchor="middle">${l[1]||''}</text>`});
+  for(const b of F.bornes||[]){const y=ROW[b.riel]+dyB(b.tab),red=b.color==='red';
+    s+=`<text x="14" y="${y+3}" font-size="9" fill="#d9dee4">${b.txt}</text><circle cx="${JACK_X}" cy="${y}" r="6" fill="${red?'#b51e2b':'#16181b'}" stroke="${red?'#5b0d14':'#000'}" stroke-width="1.5"/><circle cx="${JACK_X}" cy="${y}" r="2.2" fill="#000"/>`}
+  return s+'</g>';
+}
+function decorSVG(){
+  let s='';
+  const S=CONFIG.salidas;
+  if(S){const t=(x,txt)=>`<rect class="dec-box" x="${x-52}" y="14" width="104" height="26" rx="6"/><text class="t-ink" x="${x}" y="31" text-anchor="middle" font-size="11" font-weight="600">${txt}</text>`;
+    s+=`<g class="dec" id="dec-sal">`;
+    if(S.items.length===2&&S.centro!==undefined){const a=cx(S.items[0].c),b=cx(S.items[1].c),m=(a+b)/2;
+      s+=`<line x1="${a+52}" x2="${b-52}" y1="27" y2="27" stroke="var(--muted)" stroke-dasharray="4 5" stroke-width="1.4"/><rect x="${m-100}" y="18" width="200" height="18" rx="4" fill="var(--bench)"/><text class="t-muted" x="${m}" y="31" text-anchor="middle" font-size="10.5" id="sal-txt">${S.centro}</text>`}
+    s+=S.items.map(i=>t(cx(i.c),i.txt)).join('')+`</g>`}
+  const E=CONFIG.entradas;
+  if(E){s+=`<g class="dec" id="dec-in">`+E.items.map(i=>{const x=cx(i.c);const w=Math.max(48,i.txt.length*7+16);return `<rect class="dec-box" x="${x-w/2}" y="${442+dyB(NB)}" width="${w}" height="22" rx="5"/><text class="t-ink" x="${x}" y="${457+dyB(NB)}" text-anchor="middle" font-size="10.5" font-weight="600">${i.txt}</text><line x1="${x}" x2="${x}" y1="${432+dyB(NB)}" y2="${442+dyB(NB)}" stroke="var(--muted)"/>`}).join('')+`</g>`}
+  return s;
+}
+// ---------- piezas ----------
+function pinMark(q){return `<circle class="pin" cx="${q.x}" cy="${q.y}" r="2.3" fill="#9aa1a8" stroke="#5f666d" stroke-width=".7"/>`}
+function wireD(p){
+  if(p.curve){const a=hp(p.curve.from),b=hp(p.curve.to);return `M${a.x} ${a.y} C${cx(p.curve.c1[0])} ${p.curve.c1[1]} ${cx(p.curve.c2[0])} ${p.curve.c2[1]} ${b.x} ${b.y}`}
+  return 'M'+p.pts.map(hp).map(q=>q.x+' '+q.y).join(' L');
+}
+const wireEnds=p=>p.curve?[p.curve.from,p.curve.to]:p.pts;
+function renderWire(p){
+  const d=wireD(p),col=C[p.color]||p.color;
+  const out=p.color==='white'?'#8a9199':p.color==='black'?'#000':shade(col,.38);
+  let s=`<path d="${d}" fill="none" stroke="transparent" stroke-width="14" stroke-linecap="round" pointer-events="stroke"/>
+  <path class="wp" d="${d}" pathLength="1" fill="none" stroke="${out}" stroke-width="6.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path class="wp" d="${d}" pathLength="1" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path class="wp" d="${d}" pathLength="1" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="1.1" stroke-linecap="round" transform="translate(-.8 -.8)"/>`;
+  for(const e of wireEnds(p)) if(Array.isArray(e)) s+=pinMark(hp(e));
+  return s;
+}
+function leads(a,b){return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#8f959c" stroke-width="2.2" stroke-linecap="round"/><circle cx="${a.x}" cy="${a.y}" r="2.2" fill="#6c727a"/><circle cx="${b.x}" cy="${b.y}" r="2.2" fill="#6c727a"/>`}
+const RSIZE={'0.25':[43,14,'#e2c590'],'0.5':[60,17,'#d9b77a'],'1':[72,20,'#cfd6dc'],'2':[86,24,'#cfd6dc']};
+function renderRes(p){
+  const a=hp(p.a),b=hp(p.b),m={x:(a.x+b.x)/2,y:(a.y+b.y)/2},[L,T,fill]=RSIZE[String(p.w||'0.25')]||RSIZE['0.25'];
+  const ang=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;
+  let s=leads(a,b)+`<g class="drop"><g transform="translate(${m.x} ${m.y}) rotate(${ang})" filter="url(#sh)"><rect x="${-L/2}" y="${-T/2}" width="${L}" height="${T}" rx="${T/2}" fill="${fill}" stroke="#9f7d4c" stroke-width=".8"/>`;
+  const fr=p.bands.length===5?[.2,.31,.42,.53,.8]:[.22,.36,.5,.78],bw=L*.07;
+  p.bands.forEach((c,i)=>{s+=`<rect x="${-L/2+fr[i]*L-bw/2}" y="${-T/2+.6}" width="${bw}" height="${T-1.2}" fill="${BAND[c]}"/>`});
+  return s+`</g></g>`;
+}
+function renderDiode(p){
+  const a=hp(p.an),k=hp(p.ka),m={x:(a.x+k.x)/2,y:(a.y+k.y)/2},L=36,T=13,ang=Math.atan2(k.y-a.y,k.x-a.x)*180/Math.PI;
+  return leads(a,k)+`<g class="drop"><g transform="translate(${m.x} ${m.y}) rotate(${ang})" filter="url(#sh)"><rect x="${-L/2}" y="${-T/2}" width="${L}" height="${T}" rx="3.5" fill="${p.color||'#25262a'}"/><rect x="${L/2-8.5}" y="${-T/2}" width="4.5" height="${T}" fill="#c9ced4"/></g></g>`;
+}
+const LEDC={red:'#ff2b2b',green:'#1fd65a',yellow:'#ffd21f',orange:'#ff8c1a',blue:'#2f7bff',white:'#eef3ff',violet:'#a24bff'};
+const LEDN={red:'rojo',green:'verde',yellow:'amarillo',orange:'naranja',blue:'azul',white:'blanco',violet:'violeta'};
+function renderLED(p){ // vista desde arriba: lado plano = cátodo; dentro, el yunque (grande) es el cátodo y el poste el ánodo
+  const a=hp(p.an),k=hp(p.ka),m={x:(a.x+k.x)/2,y:(a.y+k.y)/2},ang=Math.atan2(k.y-a.y,k.x-a.x)*180/Math.PI;
+  const col=LEDC[p.color]||p.color||LEDC.red,r=p.d==3?12:16,fx=r*.8,fy=Math.sqrt(r*r-fx*fx).toFixed(2);
+  return leads(a,k)+`<g class="drop"><g transform="translate(${m.x} ${m.y}) rotate(${ang})">
+   <circle class="halo" r="${r+10}" fill="${col}" filter="url(#glow)"/>
+   <g filter="url(#sh)"><path class="dome" d="M${fx} ${-fy} A${r} ${r} 0 1 0 ${fx} ${fy} Z" fill="${col}" fill-opacity=".6" stroke="${col.startsWith('#')?shade(col,.35):'#555'}" stroke-width="1.3"/>
+   <path d="M${r*.08} ${-r*.45} L${r*.55} ${-r*.45} L${r*.55} ${r*.45} L${r*.08} ${r*.45} Z" fill="#6f747b" opacity=".75"/>
+   <rect x="${-r*.5}" y="${-r*.13}" width="${r*.32}" height="${r*.26}" fill="#8f959c" opacity=".8"/>
+   <circle class="core" r="${r*.5}" fill="#fff" opacity="0"/>
+   <circle cx="${-r*.38}" cy="${-r*.42}" r="${r*.2}" fill="#fff" opacity=".6"/></g></g></g>`;
+}
+function codigoCap(code){ // 104 → 100 nF (dos cifras × 10^tercera, en pF)
+  const m=/^(\d)(\d)(\d)$/.exec(String(code||''));if(!m) return '';
+  let pf=(+m[1]*10+ +m[2])*Math.pow(10,+m[3]);
+  const f=(v,u)=>`${+v.toPrecision(3)} ${u}`;
+  return pf>=1e6?f(pf/1e6,'µF'):pf>=1e3?f(pf/1e3,'nF'):f(pf,'pF');
+}
+function renderCap(p){ // no polarizado: estilo 'ceramico' (disco, por defecto), 'poliester' (caja) o 'mlcc' (gota pequeña)
+  const a=hp(p.a),b=hp(p.b),m={x:(a.x+b.x)/2,y:(a.y+b.y)/2},est=p.estilo||'ceramico';
+  let body;
+  if(est==='poliester'){const txt=p.code||p.val||'';
+    body=`<rect x="${m.x-15}" y="${m.y-9}" width="30" height="18" rx="3" fill="#2f74c9" stroke="#1b4a85"/><rect x="${m.x-15}" y="${m.y-9}" width="30" height="5" rx="2" fill="#5b97e0" opacity=".7"/><text x="${m.x}" y="${m.y+4.5}" text-anchor="middle" font-size="7.5" font-weight="700" fill="#fff">${txt}</text>`}
+  else if(est==='mlcc'){
+    body=`<ellipse cx="${m.x}" cy="${m.y}" rx="8" ry="6.5" fill="#d9a441" stroke="#8a6420"/><ellipse cx="${m.x-2.5}" cy="${m.y-2.5}" rx="2.6" ry="1.8" fill="#fff" opacity=".45"/>`}
+  else {
+    body=`<circle cx="${m.x}" cy="${m.y}" r="12" fill="#c8641c" stroke="#7e3a0c"/><circle cx="${m.x}" cy="${m.y}" r="9.5" fill="#df8a3a"/><ellipse cx="${m.x-4}" cy="${m.y-5}" rx="4" ry="2.4" fill="#fff" opacity=".35"/><text x="${m.x}" y="${m.y+3}" text-anchor="middle" font-size="8" font-weight="700" fill="#3b1f06">${p.code||''}</text>`}
+  return leads(a,b)+`<g class="drop"><g filter="url(#sh)">${body}</g></g>`;
+}
+function renderElec(p){ // electrolítico visto desde arriba: funda, franja negativa con «−», tapa de aluminio con ranura
+  const a=hp(p.pos),b=hp(p.neg),m={x:(a.x+b.x)/2,y:(a.y+b.y)/2},r=p.r||12,ang=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;
+  const t=r*.66,s1=Math.sin(Math.PI/3.2)*r,c1=Math.cos(Math.PI/3.2)*r;
+  let marcas='';for(const yy of [-r*.42,0,r*.42]) marcas+=`<line x1="${r*.78}" y1="${yy-2}" x2="${r*.78}" y2="${yy+2}" stroke="#1c3f86" stroke-width="1.6"/>`;
+  return leads(a,b)+`<g class="drop"><g transform="translate(${m.x} ${m.y}) rotate(${ang})" filter="url(#sh)">
+   <circle r="${r}" fill="${p.color||'#1c3f86'}" stroke="#0e2252"/>
+   <path d="M${c1} ${-s1} A${r} ${r} 0 0 1 ${c1} ${s1} L${c1*.62} ${s1*.62} A${r*.62} ${r*.62} 0 0 0 ${c1*.62} ${-s1*.62} Z" fill="#cfd8ea"/>${marcas}
+   <circle r="${t}" fill="#c8cdd4" stroke="#8d939b" stroke-width=".8"/>
+   <path d="M${-t*.7} 0 L${t*.7} 0 M0 ${-t*.7} L0 ${t*.7}" stroke="#7d838b" stroke-width="1.2"/>
+   <circle cx="${-t*.35}" cy="${-t*.4}" r="${t*.22}" fill="#fff" opacity=".5"/></g></g>`;
+}
+function renderTO(p,W,D,tab){
+  const {x,y}=hp([p.c,p.r,p.tab]),backTop=p.face>0;
+  let s=`<g class="drop" filter="url(#sh)"><rect x="${x-W/2}" y="${y-D/2}" width="${W}" height="${D}" rx="2" fill="#2a2c31"/>`;
+  s+=`<rect x="${x-W/2}" y="${backTop?y-D/2:y+D/2-tab}" width="${W}" height="${tab}" rx="1.5" fill="#b6bcc4"/>`;
+  const ty=backTop?y+D/2-3:y-D/2+9;
+  p.pins.forEach((L,i)=>{s+=`<text x="${x+(i-1)*P}" y="${ty}" text-anchor="middle" font-size="8.5" font-weight="700" fill="#f1f3f5">${L}</text>`});
+  return s+`</g>`;
+}
+function renderTO92(p){
+  const {x,y}=hp([p.c,p.r,p.tab]),dir=p.flat,hw=20.5,fy=y+9*dir;
+  let s=`<g class="drop" filter="url(#sh)"><path d="M${x-hw} ${fy} L${x+hw} ${fy} A${hw} 23 0 0 ${dir>0?0:1} ${x-hw} ${fy} Z" fill="#232428"/>`;
+  p.pins.forEach((L,i)=>{s+=`<text x="${x+(i-1)*P}" y="${y+3}" text-anchor="middle" font-size="8.5" font-weight="700" fill="#f1f3f5">${L}</text>`});
+  return s+`</g>`;
+}
+function renderPot(p){
+  const {x,y}=hp([p.c,p.r,p.tab]);
+  let s=`<g class="drop" filter="url(#sh)"><rect x="${x-24}" y="${y-22}" width="48" height="30" rx="3" fill="#2d5fb8"/><circle cx="${x}" cy="${y-7}" r="9" fill="#e8ecf2"/><line x1="${x}" y1="${y-15}" x2="${x}" y2="${y+1}" stroke="#2d5fb8" stroke-width="2.5"/>`;
+  p.pins.forEach((L,i)=>{s+=`<text x="${x+(i-1)*P}" y="${y+6}" text-anchor="middle" font-size="7.5" font-weight="700" fill="#fff">${L}</text>`});
+  return s+`</g>`;
+}
+function dipHole(p,i){const h=p.n/2;return i<=h?[p.c+i-1,'f',p.tab]:[p.c+(p.n-i),'e',p.tab]}
+function renderDIP(p){
+  const h=p.n/2,dy=dyB(p.tab),x0=cx(p.c)-9,x1=cx(p.c+h-1)+9,y0=ROW.e-5+dy,y1=ROW.f+5+dy,ym=(y0+y1)/2;
+  let s=`<g class="drop" filter="url(#sh)"><rect x="${x0}" y="${y0}" width="${x1-x0}" height="${y1-y0}" rx="3" fill="#1d1e21"/><path d="M${x0} ${ym-7} A7 7 0 0 1 ${x0} ${ym+7}" fill="#3a3c41"/><circle cx="${cx(p.c)}" cy="${y1-11}" r="2.6" fill="#55585f"/>`;
+  for(let i=1;i<=p.n;i++){const q=hp(dipHole(p,i));s+=`<rect x="${q.x-3}" y="${i<=h?y1-3:y0-1}" width="6" height="4" fill="#b8bcc2"/>`}
+  s+=`<text x="${(x0+x1)/2}" y="${ym+4}" text-anchor="middle" font-size="10" font-weight="700" fill="#e8eaed">${p.val||''}</text>`;
+  return s+`</g>`;
+}
+// Placa de desarrollo vista desde arriba. p.dibujo copia el pinout oficial tal como se ve en la hoja de datos
+// (cara de componentes hacia arriba): usb 'arriba'|'abajo', izq y der = pines de cada lado de arriba hacia abajo.
+// p.usbLado: hacia dónde queda el USB en la protoboard ('izq'|'der'); p.filas: [fila de arriba, fila de abajo].
+function moduloPines(p){
+  const d=p.dibujo,ccw=(d.usb==='arriba')===(p.usbLado==='izq');
+  const sup=ccw?d.der.slice():d.izq.slice().reverse(),inf=ccw?d.izq.slice():d.der.slice().reverse();
+  return sup.map((nm,i)=>({name:nm,hole:[p.c+i,p.filas[0],p.tab]})).concat(inf.map((nm,i)=>({name:nm,hole:[p.c+i,p.filas[1],p.tab]})));
+}
+function moduloCaja(p){
+  const n=p.dibujo.izq.length,dy=dyB(p.tab);
+  return {x0:cx(p.c)-P*.62,x1:cx(p.c+n-1)+P*.62,y0:ROW[p.filas[0]]+dy-P*.72,y1:ROW[p.filas[1]]+dy+P*.72};
+}
+function renderModulo(p){
+  const {x0,x1,y0,y1}=moduloCaja(p),col=p.color||'#1d5fa8',mx=(x0+x1)/2,my=(y0+y1)/2;
+  let s=`<g class="drop" filter="url(#sh)"><rect x="${x0}" y="${y0}" width="${x1-x0}" height="${y1-y0}" rx="4" fill="${col}" stroke="${col.startsWith('#')?shade(col,.4):'#222'}" stroke-width="1.2"/>`;
+  const ux=p.usbLado==='izq'?x0-10:x1-4;
+  s+=`<rect x="${ux}" y="${my-15}" width="14" height="30" rx="2" fill="#c9ced6" stroke="#80868e"/><rect x="${ux+(p.usbLado==='izq'?2:5)}" y="${my-9}" width="7" height="18" rx="1" fill="#555b63"/>`;
+  if(p.chip){const w=Math.min(64,(x1-x0)*.32);s+=`<rect x="${mx-w/2}" y="${my-14}" width="${w}" height="28" rx="2" fill="#17181b"/><text x="${mx}" y="${my+2.5}" text-anchor="middle" font-size="6.5" font-weight="700" fill="#c9cdd3">${p.chip}</text>`}
+  if(p.antena){const ax=p.usbLado==='izq'?x1-30:x0+6;s+=`<rect x="${ax}" y="${my-20}" width="24" height="40" rx="2" fill="none" stroke="#e6c36a" stroke-width="1.6" stroke-dasharray="5 3"/>`}
+  for(const {name,hole} of moduloPines(p)){const q=hp(hole),top=hole[1]===p.filas[0];
+    s+=`<rect x="${q.x-3.8}" y="${q.y-3.8}" width="7.6" height="7.6" rx="1" fill="#d8b24a" stroke="#8a6d1d" stroke-width=".6"/><circle cx="${q.x}" cy="${q.y}" r="1.7" fill="#3a3220"/>`;
+    s+=`<text transform="translate(${top?q.x-2.3:q.x+2.3} ${top?q.y+6.5:q.y-6.5}) rotate(${top?90:-90})" font-size="6" font-weight="700" fill="#fff">${name}</text>`}
+  return s+`</g>`;
+}
+function renderXtal(p){ // cristal de cuarzo HC-49
+  const a=hp(p.a),b=hp(p.b),m={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+  return leads(a,b)+`<g class="drop"><g filter="url(#sh)"><rect x="${m.x-17}" y="${m.y-7}" width="34" height="14" rx="7" fill="#c9ced6" stroke="#7d838b"/><rect x="${m.x-13}" y="${m.y-4}" width="26" height="8" rx="4" fill="#e3e7ec"/></g><text x="${m.x}" y="${m.y+2.6}" text-anchor="middle" font-size="6.5" font-weight="700" fill="#33373c">${p.code||''}</text></g>`;
+}
+function renderPart(p){
+  switch(p.type){
+    case 'wire':return renderWire(p);
+    case 'res':return renderRes(p);
+    case 'diode':return renderDiode(p);
+    case 'led':return renderLED(p);
+    case 'cap':return renderCap(p);
+    case 'elec':return renderElec(p);
+    case 'to126':return renderTO(p,54,20,6);
+    case 'to220':return renderTO(p,58,17,7);
+    case 'to92':return renderTO92(p);
+    case 'pot':return renderPot(p);
+    case 'dip':return renderDIP(p);
+    case 'modulo':return renderModulo(p);
+    case 'xtal':return renderXtal(p);
+  }
+  throw new Error('tipo de pieza desconocido: '+p.type);
+}
+function holesOf(p){
+  if(['to92','to126','to220','pot'].includes(p.type)) return [-1,0,1].map(k=>[p.c+k,p.r,p.tab]);
+  if(p.type==='res'||p.type==='cap'||p.type==='xtal') return [p.a,p.b];
+  if(p.type==='modulo') return moduloPines(p).map(x=>x.hole);
+  if(p.type==='diode'||p.type==='led') return [p.an,p.ka];
+  if(p.type==='elec') return [p.pos,p.neg];
+  if(p.type==='dip') return Array.from({length:p.n},(_,i)=>dipHole(p,i+1));
+  return wireEnds(p).filter(Array.isArray);
+}
+function tagPos(p){
+  if(['to92','to126','to220','pot'].includes(p.type)){const q=hp([p.c,p.r,p.tab]);return {x:q.x,y:isTop(p.r)?q.y-23:q.y+25}}
+  if(p.type==='modulo'){const k=moduloCaja(p);return {x:(k.x0+k.x1)/2,y:k.y0-10}}
+  if(p.type==='dip'){return {x:(cx(p.c)+cx(p.c+p.n/2-1))/2,y:ROW.f+24+dyB(p.tab)}}
+  const h=holesOf(p);const a=hp(h[0]),b=hp(h[1]);const top=isTop(h[0][1]);
+  const o=(RSIZE[String(p.w)]||[0,14])[1]/2+8;
+  return {x:(a.x+b.x)/2,y:(top?Math.min(a.y,b.y)-o:Math.max(a.y,b.y)+o+1)};
+}
+function tagSVG(p){
+  const txt=`${p.ref} ${p.val||p.ohm||''}`.trim(),w=txt.length*5.7+12,{x,y}=tagPos(p);
+  return `<rect x="${x-w/2}" y="${y-8}" width="${w}" height="15" rx="4" fill="#132030" opacity=".93"/><text x="${x}" y="${y+3.2}" text-anchor="middle" font-size="9.5" font-weight="600" fill="#fff">${txt}</text>`;
+}
+// ---------- ficha de la pieza tocada ----------
+const TIPO={modulo:'placa de desarrollo',xtal:'cristal',to92:'transistor · TO-92',to126:'transistor · TO-126',to220:'encapsulado TO-220',res:'resistencia',cap:'condensador',elec:'condensador electrolítico',diode:'diodo',led:'LED',dip:'circuito integrado',pot:'potenciómetro',wire:'cable'};
+const PATA={E:'emisor',B:'base',C:'colector',G:'compuerta',D:'drenador',S:'surtidor',A:'ánodo',K:'cátodo','+':'positivo','−':'negativo'};
+function patasDe(p){
+  if(['to92','to126','to220','pot'].includes(p.type)) return p.pins.map((L,i)=>[L,[p.c-1+i,p.r,p.tab],p.nets[i]]);
+  if(p.type==='modulo') return moduloPines(p).filter(x=>(p.conex||{})[x.name]).map(x=>[x.name,x.hole,p.conex[x.name]]);
+  if(p.type==='res'||p.type==='cap'||p.type==='xtal') return [['1',p.a,p.nets[0]],['2',p.b,p.nets[1]]];
+  if(p.type==='diode'||p.type==='led') return [['A',p.an,p.nets.an],['K',p.ka,p.nets.ka]];
+  if(p.type==='elec') return [['+',p.pos,p.nets.pos],['−',p.neg,p.nets.neg]];
+  if(p.type==='dip') return p.nets.map((n,i)=>[String(i+1),dipHole(p,i+1),n]);
+  return wireEnds(p).map(e=>['extremo',e,p.net]);
+}
+function nombrePieza(p){return p.ref?`${p.ref} ${p.val||p.ohm||''}`.trim():`cable ${CNAME[p.color]||''}`.trim()}
+function unidas(p,net){ // otras piezas con una pata en la misma red
+  if(!net) return '—';
+  const out=[];
+  for(const q of PARTS){ if(q===p) continue;
+    for(const [L,,n] of patasDe(q)) if(n===net){
+      const t=q.type==='wire'?`cable ${CNAME[q.color]||''}`:(['res','cap'].includes(q.type)?q.ref:`${q.ref} (${L})`);
+      out.push(q.step>cur?`<span class="note">${t}, paso ${q.step}</span>`:t); break; } }
+  return [...new Set(out)].join(', ')||'—';
+}
+const ficha=document.getElementById('ficha'),area=document.getElementById('area');
+let selP=null,selPt=null;
+function seleccionar(p,pt){
+  selP=p;selPt=pt;
+  PARTS.forEach(q=>q.el.classList.toggle('sel',q===p));
+  selL.innerHTML=holesOf(p).map(h=>{const q=hp(h);return `<circle class="selring" cx="${q.x}" cy="${q.y}" r="7.5"/>`}).join('');
+  const st=STEPS[p.step-1],esCable=p.type==='wire';
+  const filas=patasDe(p).map(([L,h,n])=>`<tr><td>${esCable?L:`${L}${PATA[L]?` <span class="note">${PATA[L]}</span>`:''}`}</td><td class="h">${hn(h)}</td><td>${nn(n)||'—'}</td>${esCable?'':`<td>${unidas(p,n)}</td>`}</tr>`).join('');
+  ficha.innerHTML=`<div class="ficha-h"><b>${p.ref||'Cable'}</b><span>${esCable?(CNAME[p.color]||''):(p.val||p.ohm||'')}</span><span class="pill">${TIPO[p.type]||p.type}</span><button class="x" type="button" aria-label="Cerrar">×</button></div>
+    ${p.info?`<p>${p.info}</p>`:''}${p.type==='led'?`<p class="note">LED ${LEDN[p.color]||p.color||''} de ${p.d==3?3:5} mm${p.vf?` · V<sub>F</sub> ≈ ${p.vf}`:''}${p.i?` · I ≈ ${p.i}`:''}. Pata larga = ánodo; lado plano = cátodo.</p>`:''}${p.type==='cap'&&p.code?`<p class="note">Código ${p.code} = ${codigoCap(p.code)}: dos cifras × 10 elevado a la tercera, en pF. Sin polaridad.</p>`:''}${p.type==='elec'?`<p class="note">Electrolítico${p.val?' de '+p.val:''}${p.v?', '+p.v:''}. La franja con «−» marca el negativo; la pata larga es la positiva. Al revés se daña.</p>`:''}
+    <div class="tw"><table><tr><th>Pata</th><th>Hueco</th><th>Nodo</th>${esCable?'':'<th>Unida a</th>'}</tr>${filas}</table></div>
+    <div class="pie"><span>Paso ${p.step}: ${st?st.t:''}</span>${p.step!==cur?'<button class="ir" type="button">Ir al paso</button>':''}</div>`;
+  ficha.querySelector('.x').addEventListener('click',cerrarFicha);
+  const ir=ficha.querySelector('.ir');
+  if(ir) ir.addEventListener('click',()=>{stop();go(p.step);seleccionar(p,selPt)});
+  ficha.hidden=false;
+  const A=area.getBoundingClientRect(),W=ficha.offsetWidth,H=ficha.offsetHeight;
+  let x=pt.x-A.left+14,y=pt.y-A.top+14;
+  if(x+W>A.width-8) x=pt.x-A.left-W-14;
+  x=Math.max(8,Math.min(x,A.width-W-8));
+  if(y+H>A.height-8) y=pt.y-A.top-H-14;
+  y=Math.max(8,y);
+  ficha.style.left=x+'px';ficha.style.top=y+'px';
+}
+function cerrarFicha(){
+  if(!selP&&ficha.hidden) return;
+  selP=null;ficha.hidden=true;selL.innerHTML='';
+  PARTS.forEach(q=>q.el&&q.el.classList.remove('sel'));
+}
+svg.innerHTML=`<defs><filter id="sh" x="-30%" y="-40%" width="160%" height="180%"><feDropShadow dx=".8" dy="1.5" stdDeviation="1" flood-opacity=".33"/></filter><filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="5"/></filter></defs>`
+ +Array.from({length:NB},(_,i)=>boardSVG(i+1)).join('')+supplySVG()+`<g id="L1"></g><g id="L2"></g><g id="L3"></g><g id="flowL"></g>`+decorSVG()+`<g id="rings"></g><g id="selL"></g><g id="tags"></g>`;
+const LAY={1:svg.querySelector('#L1'),2:svg.querySelector('#L2'),3:svg.querySelector('#L3')};
+const tagsL=svg.querySelector('#tags'),ringsL=svg.querySelector('#rings'),flowL=svg.querySelector('#flowL'),selL=svg.querySelector('#selL');
+for(const p of PARTS){
+  const g=document.createElementNS(NS,'g');g.setAttribute('class','part');g.innerHTML=renderPart(p);
+  g.setAttribute('tabindex','0');g.setAttribute('role','button');g.setAttribute('aria-label',`${nombrePieza(p)}: ${TIPO[p.type]||p.type}`);
+  g.addEventListener('click',e=>{e.stopPropagation();seleccionar(p,{x:e.clientX,y:e.clientY})});
+  g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();const r=g.getBoundingClientRect();seleccionar(p,{x:r.left+r.width/2,y:r.top+r.height/2})}});
+  LAY[p.z||(p.type==='wire'?1:2)].appendChild(g);p.el=g;
+  if(p.ref){const t=document.createElementNS(NS,'g');t.setAttribute('class','tag');t.innerHTML=tagSVG(p);tagsL.appendChild(t);p.tag=t}
+}
+const byId=Object.fromEntries(PARTS.map(p=>[p.id,p]));
+// ---------- encabezado y leyenda ----------
+document.getElementById('kicker').textContent=CONFIG.kicker||'';
+document.getElementById('titulo').textContent=CONFIG.titulo||document.title;
+document.getElementById('sub').innerHTML=CONFIG.sub||'';
+document.getElementById('legend').innerHTML=(CONFIG.leyenda||[]).map(([c,t])=>`<div>${[].concat(c).map(k=>`<span class="sw" style="background:${C[k]||k}"></span>`).join('')}${t}</div>`).join('');
+// ---------- tarjetas ----------
+function pinoutSVG(spec){
+  const [kind,order,back]=spec;
+  if(kind==='diode') return `<svg viewBox="0 0 120 70" aria-hidden="true"><line x1="6" y1="32" x2="114" y2="32" stroke="#8f959c" stroke-width="3"/><rect x="34" y="20" width="52" height="24" rx="5" fill="#25262a"/><rect x="73" y="20" width="7" height="24" fill="#c9ced4"/><text class="ink" x="16" y="62" text-anchor="middle" font-size="11">A</text><text class="ink" x="104" y="62" text-anchor="middle" font-size="11">K</text></svg>`;
+  if(kind==='led'){const col=LEDC[order]||LEDC.red;return `<svg viewBox="0 0 120 120" aria-hidden="true"><line x1="50" y1="66" x2="50" y2="112" stroke="#8f959c" stroke-width="3"/><line x1="70" y1="66" x2="70" y2="100" stroke="#8f959c" stroke-width="3"/><path d="M36 68 L36 30 A24 24 0 0 1 84 30 L84 68 Z" fill="${col}" fill-opacity=".7"/><rect x="33" y="64" width="54" height="6" rx="1" fill="${col}"/><line x1="84" y1="28" x2="84" y2="70" stroke="var(--surface-2)" stroke-width="3"/><rect x="45" y="44" width="8" height="20" fill="#8f959c"/><path d="M63 34 L76 34 L76 64 L66 64 Z" fill="#6f747b"/><text class="ink" x="26" y="100" text-anchor="middle" font-size="10">A +</text><text class="ink" x="26" y="112" text-anchor="middle" font-size="9">larga</text><text class="ink" x="94" y="100" text-anchor="middle" font-size="10">K −</text><text class="ink" x="96" y="80" text-anchor="middle" font-size="8.5">plano</text></svg>`}
+  if(kind==='elec') return `<svg viewBox="0 0 120 120" aria-hidden="true"><line x1="50" y1="76" x2="50" y2="114" stroke="#8f959c" stroke-width="3"/><line x1="70" y1="76" x2="70" y2="102" stroke="#8f959c" stroke-width="3"/><rect x="34" y="6" width="52" height="70" rx="6" fill="#1c3f86"/><rect x="68" y="6" width="18" height="70" rx="3" fill="#cfd8ea"/><text x="77" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#1c3f86">−</text><text x="77" y="44" text-anchor="middle" font-size="13" font-weight="700" fill="#1c3f86">−</text><text x="77" y="62" text-anchor="middle" font-size="13" font-weight="700" fill="#1c3f86">−</text><text x="51" y="36" text-anchor="middle" font-size="8" fill="#dfe6f5">${order||''}</text><text class="ink" x="26" y="104" text-anchor="middle" font-size="10">+ larga</text><text class="ink" x="94" y="104" text-anchor="middle" font-size="10">− corta</text></svg>`;
+  if(kind==='cap') return `<svg viewBox="0 0 120 112" aria-hidden="true"><line x1="50" y1="70" x2="50" y2="106" stroke="#8f959c" stroke-width="3"/><line x1="70" y1="70" x2="70" y2="106" stroke="#8f959c" stroke-width="3"/><circle cx="60" cy="40" r="32" fill="#c8641c"/><circle cx="60" cy="40" r="27" fill="#df8a3a"/><text x="60" y="47" text-anchor="middle" font-size="20" font-weight="700" fill="#3b1f06">${order||'104'}</text></svg>`;
+  if(kind==='dip'){const n=order||8,h=n/2;let s=`<svg viewBox="0 0 120 112" aria-hidden="true"><rect x="22" y="30" width="76" height="50" rx="3" fill="#1d1e21"/><path d="M22 47 A8 8 0 0 1 22 63" fill="#3a3c41"/><circle cx="31" cy="71" r="3" fill="#55585f"/>`;
+    for(let i=0;i<h;i++){const x=28+i*(64/(h-1||1));s+=`<text class="ink" x="${x}" y="98" text-anchor="middle" font-size="9">${i+1}</text><text class="ink" x="${x}" y="22" text-anchor="middle" font-size="9">${n-i}</text>`}
+    return s+`</svg>`}
+  const legs=order.map((L,i)=>`<line x1="${42+i*18}" y1="64" x2="${42+i*18}" y2="94" stroke="#8f959c" stroke-width="3"/><text class="ink" x="${42+i*18}" y="108" text-anchor="middle" font-size="12" font-weight="700">${L}</text>`).join('');
+  if(kind==='to126'||kind==='to220'){
+    const tab=kind==='to220'?`<rect x="30" y="0" width="60" height="26" rx="2" fill="#b6bcc4"/><circle cx="60" cy="12" r="6" fill="var(--surface-2)"/>`:'';
+    const face=back?`<rect x="28" y="${kind==='to220'?22:8}" width="64" height="${kind==='to220'?44:58}" rx="3" fill="#b6bcc4"/>`+(kind==='to126'?`<circle cx="60" cy="26" r="7" fill="var(--surface-2)"/>`:'')
+      :`<rect x="28" y="${kind==='to220'?22:8}" width="64" height="${kind==='to220'?44:58}" rx="3" fill="#2a2c31"/>`+(kind==='to126'?`<circle cx="60" cy="24" r="6" fill="var(--surface-2)"/>`:'')+`<text x="60" y="52" text-anchor="middle" font-size="10" fill="#e8eaed">${spec[4]||''}</text>`;
+    return `<svg viewBox="0 0 120 112" aria-hidden="true">${legs}${tab}${face}</svg>`;
+  }
+  const face=back?`<path d="M28 64 L28 34 A32 30 0 0 1 92 34 L92 64 Z" fill="#3a3c42"/>`
+    :`<path d="M28 64 L28 34 A32 30 0 0 1 92 34 L92 64 Z" fill="#232428"/><text x="60" y="52" text-anchor="middle" font-size="9.5" fill="#e8eaed">${spec[4]||''}</text>`;
+  return `<svg viewBox="0 0 120 112" aria-hidden="true">${legs}${face}</svg>`;
+}
+function connRow(p){
+  const sw=`<span class="sw" style="background:${C[p.color]||p.color||'#999'}"></span>`;
+  if(['to92','to126','to220','pot'].includes(p.type)) return [`<b>${p.ref}</b> ${p.val||''}`,p.pins.map((L,i)=>`${L} ${hn([p.c-1+i,p.r,p.tab])}`).join(' · '),p.nets.map(nn).join(', ')];
+  if(p.type==='res') return [`<b>${p.ref}</b> ${p.ohm||''}<br><span class="note">${p.bands.map(b=>BANDN[b]).join(', ')}</span>`,`${hn(p.a)} – ${hn(p.b)}`,`${nn(p.nets[0])} – ${nn(p.nets[1])}`];
+  if(p.type==='modulo'){const n=p.dibujo.izq.length;return [`<b>${p.ref}</b> ${p.val||''}`,`filas ${p.filas[0]} y ${p.filas[1]}, columnas ${p.c}–${p.c+n-1}${NB>1?' (P'+(p.tab||1)+')':''} · USB a la ${p.usbLado==='izq'?'izquierda':'derecha'}`,Object.entries(p.conex||{}).map(([k,v])=>`${k} → ${nn(v)}`).join('<br>')]}
+  if(p.type==='xtal') return [`<b>${p.ref}</b> ${p.val||''}`,`${hn(p.a)} – ${hn(p.b)}`,`${nn(p.nets[0])} – ${nn(p.nets[1])}`];
+  if(p.type==='cap') return [`<b>${p.ref}</b> ${p.val||codigoCap(p.code)}${p.code?` <span class="note">(${p.code})</span>`:''}`,`${hn(p.a)} – ${hn(p.b)}`,`${nn(p.nets[0])} – ${nn(p.nets[1])}`];
+  if(p.type==='diode'||p.type==='led') return [`<b>${p.ref}</b> ${p.val||''}`,`A ${hn(p.an)} · K ${hn(p.ka)}`,`${nn(p.nets.an)} → ${nn(p.nets.ka)}`];
+  if(p.type==='elec') return [`<b>${p.ref}</b> ${p.val||''}`,`+ ${hn(p.pos)} · − ${hn(p.neg)}`,`${nn(p.nets.pos)} / ${nn(p.nets.neg)}`];
+  if(p.type==='dip') return [`<b>${p.ref}</b> ${p.val||''}`,`pata 1 en ${hn(dipHole(p,1))} · pata ${p.n} en ${hn(dipHole(p,p.n))}`,p.nets.map((n,i)=>`${i+1}:${nn(n)}`).join(' ')];
+  return [`${sw}cable ${CNAME[p.color]||''}`,wireEnds(p).map(hn).join(' – '),nn(p.net)];
+}
+const card=document.getElementById('card');
+let cur=1,timer=null,labelsOn=false,testState=null;
+const T=CONFIG.prueba;
+function renderCard(){
+  const s=STEPS[cur-1];
+  let h=`<div class="kicker">Paso ${cur} de ${STEPS.length}</div><h2>${s.t}</h2><p>${s.body}</p>`;
+  if(s.pin) h+=`<div class="pins">${s.pin.map(sp=>`<figure>${pinoutSVG(sp)}<figcaption>${sp[3]||''}</figcaption></figure>`).join('')}</div>`;
+  const ps=PARTS.filter(p=>p.step===cur);
+  if(ps.length) h+=`<div class="tblwrap"><table class="conn"><tr><th>Pieza</th><th>Huecos</th><th>Nodo</th></tr>${ps.map(p=>{const r=connRow(p);return `<tr><td>${r[0]}</td><td class="h">${r[1]}</td><td>${r[2]}</td></tr>`}).join('')}</table></div>`;
+  if(s.extra) h+=s.extra;
+  if(s.test&&T) h+=testHTML();
+  if(s.why) h+=`<div class="why"><span class="kicker">${CONFIG.notaTitulo||'Cómo funciona'}</span><p>${s.why}</p></div>`;
+  card.innerHTML=h;
+  if(s.test&&T){card.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>setTest(b.dataset.s)));
+    const fb=card.querySelector('.flujo-btn');
+    if(fb) fb.addEventListener('click',()=>{verFlujo=!verFlujo;fb.setAttribute('aria-pressed',String(verFlujo));fb.textContent=`⚡ Corriente: ${verFlujo?'visible':'oculta'}`;dibujarFlujo()});
+    updateTest()}
+}
+function testHTML(){
+  return `<div class="seg" role="group" aria-label="Estados de prueba">${T.estados.map(e=>`<button type="button" data-s="${e.id}">${e.boton}</button>`).join('')}</div>
+   <div class="reads">${(T.lecturas||[]).map(([k,id])=>`<div class="read"><div class="k">${k}</div><div class="v" data-r="${id}"></div></div>`).join('')}</div>
+   ${T.estados.some(e=>e.flujo&&e.flujo.length)?`<button type="button" class="flujo-btn" aria-pressed="${verFlujo}">⚡ Corriente: ${verFlujo?'visible':'oculta'}</button>`:''}
+   <div class="states" id="r-st"></div><p id="r-txt"></p>${T.nota?`<p class="note">${T.nota}</p>`:''}${T.alerta?`<div class="alert">${T.alerta}</div>`:''}`;
+}
+let verFlujo=true,flujoActual=[];
+function dibujarFlujo(){flowL.innerHTML=verFlujo?flujoActual.map(f=>`<path class="flow" d="M${f.map(hp).map(q=>q.x+' '+q.y).join(' L')}"/>`).join(''):''}
+function setTest(id,visual=true){   // visual=false: solo deja los interruptores en reposo (pasos de montaje)
+  if(!T) return;
+  const E=T.estados.find(e=>e.id===id)||T.estados[0];testState=E.id;
+  // los cables "interruptor" (sw:true) vuelven a su destino de reposo salvo que el estado los mueva
+  for(const p of PARTS) if(p.sw){p.pts=[p.pts[0],(E.sw&&E.sw[p.id])||p.swOff];p.el.innerHTML=renderPart(p)}
+  PARTS.forEach(p=>{p.el.classList.toggle('active',visual&&(E.activos||[]).includes(p.id));p.el.classList.toggle('lit',visual&&(E.luces||[]).includes(p.id))});
+  flujoActual=visual?(E.flujo||[]):[];dibujarFlujo();
+  const st=svg.querySelector('#sal-txt');if(st&&CONFIG.salidas) st.textContent=E.salida||CONFIG.salidas.centro;
+  updateTest();
+}
+function updateTest(){
+  const E=T&&T.estados.find(e=>e.id===testState);if(!E||!card.querySelector('#r-txt'))return;
+  card.querySelectorAll('[data-r]').forEach(el=>{el.textContent=(E.lecturas||{})[el.dataset.r]??'—'});
+  card.querySelector('#r-txt').textContent=E.texto||'';
+  card.querySelector('#r-st').innerHTML=(T.chips||[]).map(x=>`<span class="st ${(E.encendidos||[]).includes(x)?'on':''}">${x} ${(E.encendidos||[]).includes(x)?'ON':'off'}</span>`).join('');
+  card.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.s===testState)));
+}
+for(const p of PARTS) if(p.sw) p.swOff=p.pts[1];
+// ---------- pasos ----------
+const list=document.getElementById('steps');
+list.innerHTML=STEPS.map((s,i)=>`<li><button type="button" class="chip" data-i="${i+1}"><span class="n">${String(i+1).padStart(2,'0')}</span><span>${s.t}</span></button></li>`).join('');
+list.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{stop();go(+b.dataset.i)}));
+function go(n,animate=true){
+  cerrarFicha();
+  const prev=cur;cur=Math.max(1,Math.min(STEPS.length,n));
+  if(T&&(cur!==prev||!STEPS[cur-1].test||testState===null)) setTest(T.estados[0].id,!!STEPS[cur-1].test);
+  svg.classList.toggle('testing',!!STEPS[cur-1].test);
+  svg.classList.toggle('step1',cur===1);
+  const now=[];
+  PARTS.forEach(p=>{p.el.classList.remove('anim');p.el.classList.toggle('on',p.step<=cur);if(p.step===cur)now.push(p);
+    if(p.tag)p.tag.classList.toggle('on',p.step<=cur&&(labelsOn||p.step===cur))});
+  const ds=svg.querySelector('#dec-sal');if(ds)ds.classList.toggle('on',cur>=CONFIG.salidas.paso);
+  const di=svg.querySelector('#dec-in');if(di)di.classList.toggle('on',cur>=CONFIG.entradas.paso);
+  const ps=svg.querySelector('#psu');if(ps)ps.classList.toggle('lit',cur>=(CONFIG.fuente.paso||99));
+  ringsL.innerHTML=now.flatMap(holesOf).map(h=>{const q=hp(h);return `<circle class="ring" cx="${q.x}" cy="${q.y}" r="6.5"/>`}).join('');
+  if(animate&&!reduce){void svg.getBoundingClientRect();now.forEach((p,i)=>{p.el.style.setProperty('--d',(i*.2)+'s');p.el.classList.add('anim')})}
+  document.getElementById('counter').textContent=`Paso ${cur} / ${STEPS.length}`;
+  document.getElementById('prev').disabled=cur===1;
+  document.getElementById('next').disabled=cur===STEPS.length;
+  list.querySelectorAll('.chip').forEach(b=>{const i=+b.dataset.i;b.classList.toggle('cur',i===cur);b.classList.toggle('done',i<cur);b.setAttribute('aria-current',i===cur?'step':'false')});
+  renderCard();
+}
+const playBtn=document.getElementById('play');
+function stop(){if(timer){clearInterval(timer);timer=null}playBtn.textContent='▶ Reproducir'}
+function play(){if(cur===STEPS.length)go(1);playBtn.textContent='❚❚ Pausa';timer=setInterval(()=>{if(cur>=STEPS.length){stop();return}go(cur+1)},4200)}
+playBtn.addEventListener('click',()=>timer?stop():play());
+document.getElementById('prev').addEventListener('click',()=>{stop();go(cur-1)});
+document.getElementById('next').addEventListener('click',()=>{stop();go(cur+1)});
+document.getElementById('replay').addEventListener('click',()=>{stop();go(cur)});
+document.getElementById('labels').addEventListener('change',e=>{labelsOn=e.target.checked;go(cur,false)});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')cerrarFicha()});
+svg.addEventListener('click',()=>cerrarFicha());
+document.addEventListener('keydown',e=>{if(e.target.closest&&e.target.closest('input,button'))return;if(e.key==='ArrowRight'){stop();go(cur+1)}if(e.key==='ArrowLeft'){stop();go(cur-1)}});
+go(1,false);
+</script>

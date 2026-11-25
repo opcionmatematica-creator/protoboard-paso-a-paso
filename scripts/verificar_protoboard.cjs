@@ -61,6 +61,13 @@ function usar(h, quien) {
   if (usados[k]) errs.push(`hueco ${k} usado por ${usados[k]} y ${quien}`);
   usados[k] = quien;
 }
+// placas de desarrollo: igual que en la plantilla
+function moduloPines(p) {
+  const d = p.dibujo, ccw = (d.usb === 'arriba') === (p.usbLado === 'izq');
+  const sup = ccw ? d.der.slice() : d.izq.slice().reverse(), inf = ccw ? d.izq.slice() : d.der.slice().reverse();
+  return sup.map((nm, i) => ({ name: nm, hole: [p.c + i, p.filas[0], p.tab] })).concat(inf.map((nm, i) => ({ name: nm, hole: [p.c + i, p.filas[1], p.tab] })));
+}
+const FILA_IDX = { a: 0, b: 1, c: 2, d: 3, e: 4, f: 7, g: 8, h: 9, i: 10, j: 11 };   // posición en décimas de pulgada
 const dipHole = (p, i) => { const h = p.n / 2; return i <= h ? [p.c + i - 1, 'f', p.tab] : [p.c + (p.n - i), 'e', p.tab]; };
 
 // patas de cada pieza: {h, keys:[...], net, grupo (para piezas sin orden)}
@@ -69,7 +76,8 @@ function patas(p) {
   switch (p.type) {
     case 'to92': case 'to126': case 'to220': case 'pot':
       return p.pins.map((n, i) => L([p.c - 1 + i, p.r, p.tab], [p.ref + ':' + n].concat(p.kpins ? [p.ref + ':' + p.kpins[i]] : []), p.nets[i]));
-    case 'res': case 'cap': return [L(p.a, [], p.nets[0]), L(p.b, [], p.nets[1])].map(x => (x.sinOrden = true, x));
+    case 'res': case 'cap': case 'xtal': return [L(p.a, [], p.nets[0]), L(p.b, [], p.nets[1])].map(x => (x.sinOrden = true, x));
+    case 'modulo': return moduloPines(p).map(({ name, hole }) => Object.assign(L(hole, [p.ref + ':' + name], (p.conex || {})[name] || null), { modulo: true }));
     case 'diode': case 'led': return [L(p.an, [p.ref + ':A', p.ref + ':2'], p.nets.an), L(p.ka, [p.ref + ':K', p.ref + ':1'], p.nets.ka)];
     case 'elec': return [L(p.pos, [p.ref + ':+', p.ref + ':1'], p.nets.pos), L(p.neg, [p.ref + ':-', p.ref + ':2'], p.nets.neg)];
     case 'dip': return Array.from({ length: p.n }, (_, k) => L(dipHole(p, k + 1), [p.ref + ':' + (k + 1)], p.nets[k]));
@@ -105,7 +113,19 @@ for (const p of PARTS) {
   const ls = patas(p);
   if (!ls.length) { errs.push(`${p.id}: tipo desconocido ${p.type}`); continue; }
   ls.forEach(l => { usar(l.h, p.id); todas.push(l); });
-  if (p.type === 'res' || p.type === 'cap') p._patas = ls;
+  if (p.type === 'res' || p.type === 'cap' || p.type === 'xtal') p._patas = ls;
+  if (p.type === 'modulo') {
+    const d = p.dibujo || {};
+    if (!d.izq || !d.der || d.izq.length !== d.der.length) errs.push(`${p.id}: dibujo.izq y dibujo.der deben tener el mismo número de pines`);
+    if (!p.filas || !(p.filas[0] in FILA_IDX) || !(p.filas[1] in FILA_IDX)) errs.push(`${p.id}: filas inválidas`);
+    else if (p.separacion && FILA_IDX[p.filas[1]] - FILA_IDX[p.filas[0]] !== p.separacion)
+      errs.push(`${p.id}: las filas ${p.filas[0]} y ${p.filas[1]} están a ${(FILA_IDX[p.filas[1]] - FILA_IDX[p.filas[0]]) / 10}" pero la placa tiene ${p.separacion / 10}" entre filas de pines`);
+    for (const k of Object.keys(p.conex || {})) if (![...d.izq || [], ...d.der || []].includes(k)) errs.push(`${p.id}: conex usa el pin «${k}», que la placa no tiene`);
+    // pines con el mismo nombre (dos GND, dos RST) están unidos dentro de la placa
+    const porNombre = {};
+    for (const l of ls) (porNombre[l.keys[0]] ??= []).push(node(l.h));
+    for (const ns of Object.values(porNombre)) for (let k = 1; k < ns.length; k++) unir(ns[0], ns[k]);
+  }
 }
 // externos (pines del esquema sin pieza): 'VM:1' -> [1,'T+']
 for (const [k, h] of Object.entries(CONFIG.externos || {})) todas.push({ h, keys: [k], net: null, ref: k.split(':')[0], externo: true });
@@ -144,7 +164,7 @@ if (jsonPath) {
   }
   // patas de la protoboard que el esquema no conoce
   const conocidas = new Set(Object.keys(exp));
-  for (const l of todas) if (!l.cable && !l.externo && l.keys.length && !l.keys.some(k => conocidas.has(k))) avisos.push(`pata ${l.keys[0]} (${l.h.join('')}) no está en el esquema`);
+  for (const l of todas) if (!l.cable && !l.externo && !(l.modulo && !l.net) && l.keys.length && !l.keys.some(k => conocidas.has(k))) avisos.push(`pata ${l.keys[0]} (${l.h.join('')}) no está en el esquema`);
   // una referencia sin ninguna pata en la protoboard (los alias número/letra de un mismo pin no cuentan)
   const refsOk = new Set(Object.keys(keyNodo).map(k => k.split(':')[0]));
   const refsSin = [...new Set([...sinPieza].map(k => k.split(':')[0]))].filter(r => !refsOk.has(r));

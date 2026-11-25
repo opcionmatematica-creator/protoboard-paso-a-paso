@@ -14,6 +14,7 @@ Hay tres ejemplos completos y verificados en `assets/`:
 - CONFIG
 - PARTS: campos comunes, tipos y cables
 - Ficha al tocar una pieza
+- Programa de un microcontrolador
 - STEPS
 - Prueba interactiva
 
@@ -45,6 +46,7 @@ const CONFIG={
   salidas:{paso:11, items:[{c:4,txt:'MOTOR · MA'},{c:34,txt:'MOTOR · MB'}], centro:'motor DC entre los bornes'}, // o null
   entradas:{paso:10, items:[{c:7,txt:'A'},{c:31,txt:'B'}]},  // o null; van debajo de la última protoboard
   leyenda:[['red','Rojo: alimentación'],['black','Negro: tierra'],[['blue','violet'],'Azul y violeta: …']],
+  notaTitulo:'Cómo funciona',   // título de la nota de cada paso; en un curso, p. ej. 'Para la sustentación'
   externos:{'VM:1':[1,'T+'],'VM:2':[1,'B-'],'M1:1':[4,'a']},   // pines del esquema sin pieza física
   prueba:{…},            // o null; ver «Prueba interactiva»
 };
@@ -118,6 +120,21 @@ const CONFIG={
 - `cap.code`: código de tres cifras (`'104'`). La ficha y la tabla lo traducen (104 = 100 nF).
 - `elec`: visto desde arriba, con la funda, la franja negativa con marcas «−» y la tapa de aluminio con su ranura. `v` es el voltaje nominal; `r` es el radio en px (12 por defecto; 8–10 para valores pequeños, 14–16 para los grandes).
 
+### Placa de desarrollo: `modulo`
+
+Arduino Nano, Raspberry Pi Pico, ESP32 DevKit y similares, vistos desde arriba, a horcajadas sobre la canaleta. Todos los detalles, los pinouts listos para copiar y cómo investigar una placa nueva están en `references/microcontroladores.md`.
+
+```js
+{id:'U1',step:2,type:'modulo',ref:'U1',val:'Arduino Nano',chip:'ATmega328P',color:'#1d5fa8',
+ c:12, filas:['c','g'], separacion:6, usbLado:'der',
+ dibujo:{usb:'arriba', izq:['D13','3V3',…], der:['D12','D11',…]},   // tal como el diagrama oficial
+ conex:{'D2':'D2','GND':'GND'}, info:'…'}
+```
+
+### Cristal: `xtal`
+
+`a`, `b`, `code` (texto impreso, p. ej. `'16.000'`) y `nets:[n1,n2]`. Sin polaridad.
+
 ### Diodo: `diode`
 
 `an`, `ka` y `nets:{an,ka}`. La franja se dibuja del lado `ka`.
@@ -153,6 +170,10 @@ Al tocar una pieza o un cable (o con Tab y Enter) se resaltan sus huecos y se ab
 
 Se cierra con ×, con Esc o tocando la protoboard.
 
+## Programa de un microcontrolador
+
+Si el montaje necesita un programa, ponlo en el `extra` de un paso dentro de `<pre><code>…</code></pre>`, con saltos de línea `\n`. La plantilla le da formato de bloque de código.
+
 ## STEPS
 
 ```js
@@ -160,7 +181,7 @@ Se cierra con ×, con Esc o tocando la protoboard.
  body:'Inserta Q1 (BD140) en la fila c… <code>3c</code>…',   // HTML
  pin:[['to126',['E','C','B'],false,'Cara impresa hacia ti','BD140']],  // opcional
  extra:'<p class="note">…</p>',     // HTML opcional, va después de la tabla
- why:'Q1 (PNP) une MA con +V…',     // nota «Para la sustentación»
+ why:'Q1 (PNP) une MA con +V…',     // nota «Cómo funciona» (título en CONFIG.notaTitulo)
  test:true}                         // solo en el paso de prueba
 ```
 
