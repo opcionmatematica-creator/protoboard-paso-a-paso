@@ -1,0 +1,462 @@
+<meta charset="utf-8">
+<title>__TITULO__</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Banco de laboratorio: la protoboard es el objeto físico (colores fijos); la página alrededor sigue el tema. */
+:root{
+  --bg:#e8ecf0; --surface:#ffffff; --surface-2:#f2f5f8; --ink:#15202b; --muted:#566273;
+  --line:#d2d9e1; --accent:#1d5bd8; --accent-soft:#e2ebfd; --warn:#b3261e; --warn-soft:#fdeae8;
+  --ok:#13774a; --ok-soft:#e1f3e9; --bench:#d6dde5;
+  --f-head:'IBM Plex Sans Condensed','Arial Narrow',system-ui,sans-serif;
+  --f-body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1318; --surface:#161d25; --surface-2:#1c252f; --ink:#e5eaf0; --muted:#98a4b3;
+  --line:#2a3542; --accent:#79a6ff; --accent-soft:#1b2a45; --warn:#ff8a7e; --warn-soft:#3a1d1b;
+  --ok:#62d69a; --ok-soft:#14301f; --bench:#121920; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0e1318; --surface:#161d25; --surface-2:#1c252f; --ink:#e5eaf0; --muted:#98a4b3;
+  --line:#2a3542; --accent:#79a6ff; --accent-soft:#1b2a45; --warn:#ff8a7e; --warn-soft:#3a1d1b;
+  --ok:#62d69a; --ok-soft:#14301f; --bench:#121920; color-scheme:dark }
+
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
+.wrap{max-width:1200px;margin:0 auto;padding-block:22px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:grid;gap:18px}
+h1{font-family:var(--f-head);font-weight:700;font-size:30px;line-height:1.1;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.sub{margin:4px 0 0;color:var(--muted);max-width:70ch}
+.kicker{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.stage{background:var(--bench);border-radius:14px;padding:10px;display:grid;gap:10px}
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.btn{font:600 14px/1 var(--f-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);
+  border-radius:8px;padding:9px 13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--accent)}
+.btn:focus-visible,.chip:focus-visible,.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] .btn.primary{color:#0b1220}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn.primary{color:#0b1220}}
+.btn[disabled]{opacity:.45;cursor:default}
+.counter{font-family:var(--f-mono);font-size:13px;color:var(--muted);margin-left:4px;font-variant-numeric:tabular-nums}
+.spacer{flex:1}
+.toggle{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--muted);cursor:pointer}
+.board-wrap{overflow-x:auto;border-radius:10px}
+#bb{display:block;width:100%;min-width:760px;height:auto}
+.info{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.info{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px 22px;min-width:0}
+.card h2{font-family:var(--f-head);font-weight:700;font-size:23px;line-height:1.2;margin:4px 0 8px;text-wrap:balance}
+.card p{margin:0 0 12px;max-width:68ch}
+code,.mono{font-family:var(--f-mono);font-size:.92em}
+code{background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.tblwrap{overflow-x:auto;margin:6px 0 14px}
+table.conn{width:100%;border-collapse:collapse;font-size:14px}
+table.conn th{text-align:left;font:600 11.5px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+  border-bottom:1px solid var(--line);padding:6px 10px 6px 0}
+table.conn td{border-bottom:1px solid var(--line);padding:7px 10px 7px 0;vertical-align:top}
+table.conn td.h{font-family:var(--f-mono);white-space:nowrap;font-variant-numeric:tabular-nums}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px;border:1px solid rgba(0,0,0,.35)}
+.why{background:var(--surface-2);border-radius:10px;padding:12px 14px;margin-top:6px}
+.why .kicker{display:block;margin-bottom:4px}
+.why p{margin:0}
+.pins{display:flex;flex-wrap:wrap;gap:12px;margin:4px 0 14px}
+.pins figure{margin:0;background:var(--surface-2);border-radius:10px;padding:8px 10px 6px;display:grid;justify-items:center;gap:2px}
+.pins figcaption{font-size:12.5px;color:var(--muted);text-align:center;max-width:150px;line-height:1.35}
+.pins svg{width:120px;height:auto}
+.pins svg text{font-family:var(--f-mono)}
+.pins .ink{fill:var(--ink)}
+aside{display:grid;gap:14px;min-width:0}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.chip{width:100%;text-align:left;font:500 14px/1.3 var(--f-body);color:var(--ink);background:transparent;border:0;border-radius:7px;
+  padding:7px 9px;cursor:pointer;display:grid;grid-template-columns:26px minmax(0,1fr);gap:6px;align-items:baseline}
+.chip .n{font-family:var(--f-mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.chip:hover{background:var(--surface-2)}
+.chip.done{color:var(--muted)}
+.chip.cur{background:var(--accent-soft);color:var(--ink);font-weight:600}
+.chip.cur .n{color:var(--accent)}
+.legend{display:grid;gap:6px;font-size:13.5px}
+.legend div{display:flex;gap:8px;align-items:center}
+.legend .sw{width:22px;height:6px;border-radius:3px;margin:0}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
+.seg button{font:600 14px var(--f-body);padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.reads{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:0 0 12px}
+.read{background:var(--surface-2);border-radius:9px;padding:8px 10px}
+.read .k{font:600 11px var(--f-mono);letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+.read .v{font:600 19px var(--f-mono);font-variant-numeric:tabular-nums}
+.states{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.st{font:600 12.5px var(--f-mono);padding:3px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
+.st.on{background:var(--ok-soft);color:var(--ok)}
+.alert{background:var(--warn-soft);color:var(--ink);border-radius:10px;padding:10px 14px;font-size:14px}
+.alert b{color:var(--warn)}
+.note{font-size:13.5px;color:var(--muted)}
+/* ---------- SVG ---------- */
+#bb text{font-family:var(--f-mono)}
+.t-ink{fill:var(--ink)} .t-muted{fill:var(--muted)}
+.dec-box{fill:var(--surface);stroke:var(--line)}
+.rail-lab{font-size:11px;fill:var(--muted)}
+.step1 .rail-lab{fill:var(--accent);font-weight:600}
+.step1 .stripe{stroke-width:3.2}
+.part{display:none} .part.on{display:inline}
+.dec{display:none} .dec.on{display:inline}
+.tag{display:none;pointer-events:none} .tag.on{display:inline}
+.ring{fill:none;stroke:#e0157a;stroke-width:2;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{stroke-opacity:1;r:6.5}50%{stroke-opacity:.35;r:9}}
+.part.anim .drop{animation:drop .55s cubic-bezier(.2,.8,.25,1) both;animation-delay:var(--d,0s)}
+.part.anim .wp{stroke-dasharray:1;animation:draw .75s ease-out both;animation-delay:var(--d,0s)}
+.part.anim .pin{animation:fade .25s both;animation-delay:calc(var(--d,0s) + .6s)}
+@keyframes drop{from{opacity:0;transform:translateY(-34px)}to{opacity:1;transform:none}}
+@keyframes draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.testing .part.on:not(.active){opacity:.42}
+.part.active{filter:drop-shadow(0 0 3px #00c2ff) drop-shadow(0 0 1px #00c2ff)}
+.flow{fill:none;stroke:#00c2ff;stroke-width:3;stroke-dasharray:5 9;stroke-linecap:round;stroke-linejoin:round;animation:flow .55s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-14}}
+.lcd{fill:#20262c} .lit .lcd{fill:#173b22}
+.lcd-t{fill:#3a4249;font-size:10px;font-weight:600} .lit .lcd-t{fill:#7dff9e}
+@media (prefers-reduced-motion: reduce){.part.anim .drop,.part.anim .wp,.part.anim .pin,.ring,.flow{animation:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="kicker" id="kicker"></div>
+    <h1 id="titulo"></h1>
+    <p class="sub" id="sub"></p>
+  </header>
+  <section class="stage" aria-label="Protoboard">
+    <div class="toolbar">
+      <button class="btn" id="prev" type="button" aria-label="Paso anterior">◀ Anterior</button>
+      <button class="btn primary" id="play" type="button">▶ Reproducir</button>
+      <button class="btn" id="next" type="button" aria-label="Paso siguiente">Siguiente ▶</button>
+      <button class="btn" id="replay" type="button" aria-label="Repetir animación del paso">↻</button>
+      <span class="counter" id="counter"></span>
+      <span class="spacer"></span>
+      <label class="toggle"><input type="checkbox" id="labels"> Mostrar todas las etiquetas</label>
+    </div>
+    <div class="board-wrap"><svg id="bb" role="img" aria-label="Protoboard con el montaje"></svg></div>
+  </section>
+  <div class="info">
+    <article class="card" id="card" aria-live="polite"></article>
+    <aside>
+      <div class="card"><div class="kicker" style="margin-bottom:8px">Pasos</div><ol class="steps" id="steps"></ol></div>
+      <div class="card"><div class="kicker" style="margin-bottom:8px">Código de colores</div><div class="legend" id="legend"></div></div>
+    </aside>
+  </div>
+</div>
+
+<script>
+// DATOS-INICIO  (solo datos: el verificador evalúa este bloque; no uses funciones del motor aquí)
+const CONFIG={
+  titulo:'__TITULO__',
+  kicker:'Práctica · montaje',
+  sub:'Montaje paso a paso en protoboard.',
+  columnas:40,            // columnas dibujadas (una protoboard de 830 puntos tiene 63)
+  huecoRiel0:4,           // las columnas c con (c - huecoRiel0) % 6 == 0 no tienen hueco en los rieles
+  rieles:{'T-':'sin usar','T+':'+V','B-':'GND','B+':'sin usar'},
+  fuente:null,            // {paso, lcd:[['CH1 9.00V','lím 1.00A'],...], bornes:[{riel:'T+',txt:'CH1 +',color:'red'},...]}
+  salidas:null,           // {paso, items:[{c:4,txt:'MOTOR · MA'}], centro:'texto entre bornes'}
+  entradas:null,          // {paso, items:[{c:7,txt:'A'}]}
+  leyenda:[['red','Rojo: alimentación'],['black','Negro: tierra (GND)']],
+  externos:{},            // pines del esquema sin pieza física: {'VM:1':[1,'T+'], 'VM:2':[1,'B-']}
+  prueba:null,            // ver referencia: {lecturas:[['V(MA)','ma']], estados:[...], nota, alerta}
+};
+const PARTS=[];
+const STEPS=[{t:'Orienta la protoboard',body:'…'}];
+// DATOS-FIN
+
+// ================= motor (no hace falta tocarlo) =================
+const P=18,BX=110,BY=90,NC=CONFIG.columnas||40,BW=48+(NC-1)*P,BH=342,SAL_Y=44,JACK_X=70;
+const cx=c=>BX+24+(c-1)*P;
+const ROW={'T-':108,'T+':126,a:162,b:180,c:198,d:216,e:234,f:288,g:306,h:324,i:342,j:360,'B-':396,'B+':414};
+const railHole=c=>(((c-(CONFIG.huecoRiel0??4))%6)+6)%6!==0;
+const C={red:'#d7263d',black:'#202124',green:'#2e9b4f',yellow:'#f2c230',orange:'#f08a24',blue:'#2f6fdc',violet:'#8e44c9',white:'#f7f7f4',gray:'#8a9199',brown:'#7b4a24'};
+const CNAME={red:'rojo',black:'negro',green:'verde',yellow:'amarillo',orange:'naranja',blue:'azul',violet:'violeta',white:'blanco',gray:'gris',brown:'café'};
+const BAND={black:'#1b1b1b',brown:'#7b4a24',red:'#cc2a2f',orange:'#e8731a',yellow:'#e6c21a',green:'#2e8b3a',blue:'#2c5fd0',violet:'#7d3fb0',gray:'#8f8f8f',white:'#f5f5f5',gold:'#c8a03c',silver:'#b8bcc2'};
+const BANDN={black:'negro',brown:'café',red:'rojo',orange:'naranja',yellow:'amarillo',green:'verde',blue:'azul',violet:'violeta',gray:'gris',white:'blanco',gold:'dorado',silver:'plateado'};
+const RAILN={'T+':'riel sup. +','T-':'riel sup. −','B-':'riel inf. −','B+':'riel inf. +'};
+const nn=n=>(n||'').replace(/^\+(\d+(?:\.\d+)?)V$/,'+$1 V');
+const isTop=r=>'abcde'.includes(r);
+function hp(h){
+  if(Array.isArray(h)) return {x:cx(h[0]),y:ROW[h[1]]};
+  if(h.sal!==undefined) return {x:cx(h.sal),y:h.y??SAL_Y};
+  if(h.fuente!==undefined) return {x:JACK_X,y:ROW[h.fuente]};
+  return h;
+}
+function hn(h){
+  if(!Array.isArray(h)) return h.sal!==undefined?'salida':'fuente';
+  return h[1].length===1?h[0]+h[1]:(CONFIG.rieles[h[1]]&&CONFIG.rieles[h[1]]!=='sin usar'?'riel '+CONFIG.rieles[h[1]]:RAILN[h[1]]);
+}
+const svg=document.getElementById('bb');
+const NS='http://www.w3.org/2000/svg';
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const VBW=BX+BW+64;
+svg.setAttribute('viewBox',`0 0 ${VBW} 478`);
+function shade(hex,k){const n=parseInt(hex.slice(1),16);let r=n>>16,g=(n>>8)&255,b=n&255;return `rgb(${Math.round(r*(1-k))},${Math.round(g*(1-k))},${Math.round(b*(1-k))})`}
+
+function boardSVG(){
+  let s=`<rect x="${BX}" y="${BY}" width="${BW}" height="${BH}" rx="9" fill="#f5f3ec" stroke="#cdc8b8"/>`;
+  s+=`<line x1="${BX+8}" x2="${BX+BW-8}" y1="140" y2="140" stroke="#e2ddd0"/><line x1="${BX+8}" x2="${BX+BW-8}" y1="382" y2="382" stroke="#e2ddd0"/>`;
+  s+=`<rect x="${BX+8}" y="254" width="${BW-16}" height="14" rx="3" fill="#e4dfd2"/>`;
+  const st=(y,c)=>`<line class="stripe" x1="${BX+18}" x2="${BX+BW-18}" y1="${y}" y2="${y}" stroke="${c}" stroke-width="1.8"/>`;
+  s+=st(99,'#3d6fd1')+st(135,'#d23b3b')+st(387,'#3d6fd1')+st(423,'#d23b3b');
+  let holes='';
+  for(let c=1;c<=NC;c++){const x=cx(c);
+    for(const r of 'abcdefghij') holes+=`<rect x="${x-2.6}" y="${ROW[r]-2.6}" width="5.2" height="5.2" rx="1"/>`;
+    if(railHole(c)) for(const r of ['T-','T+','B-','B+']) holes+=`<rect x="${x-2.6}" y="${ROW[r]-2.6}" width="5.2" height="5.2" rx="1"/>`;}
+  s+=`<g fill="#47443c">${holes}</g>`;
+  let t='';
+  for(const r of 'abcdefghij') t+=`<text x="${BX+11}" y="${ROW[r]+3.5}" text-anchor="middle">${r}</text><text x="${BX+BW-11}" y="${ROW[r]+3.5}" text-anchor="middle">${r}</text>`;
+  for(let c=1;c<=NC;c++) if(c===1||c%5===0) t+=`<text x="${cx(c)}" y="151" text-anchor="middle">${c}</text><text x="${cx(c)}" y="376" text-anchor="middle">${c}</text>`;
+  s+=`<g fill="#8b8574" font-size="9">${t}</g>`;
+  const sg=(y,ch,col)=>`<text x="${BX+11}" y="${y+4}" text-anchor="middle" font-size="12" font-weight="700" fill="${col}">${ch}</text><text x="${BX+BW-11}" y="${y+4}" text-anchor="middle" font-size="12" font-weight="700" fill="${col}">${ch}</text>`;
+  s+=sg(108,'−','#3d6fd1')+sg(126,'+','#d23b3b')+sg(396,'−','#3d6fd1')+sg(414,'+','#d23b3b');
+  const lx=BX+BW+8;
+  for(const [r,y] of [['T-',112],['T+',130],['B-',400],['B+',418]]) s+=`<text class="rail-lab" x="${lx}" y="${y}">${CONFIG.rieles[r]||'sin usar'}</text>`;
+  return s;
+}
+function supplySVG(){
+  const F=CONFIG.fuente; if(!F) return '';
+  let s=`<g id="psu"><rect x="6" y="94" width="76" height="336" rx="7" fill="#2b3139" stroke="#1a1e23"/>
+  <text x="44" y="111" text-anchor="middle" font-size="9.5" font-weight="600" fill="#d9dee4">FUENTE DC</text>`;
+  (F.lcd||[]).forEach((l,i)=>{const y=150+i*150;s+=`<rect class="lcd" x="13" y="${y}" width="62" height="40" rx="3"/><text class="lcd-t" x="44" y="${y+16}" text-anchor="middle">${l[0]}</text><text class="lcd-t" x="44" y="${y+31}" text-anchor="middle">${l[1]||''}</text>`});
+  for(const b of F.bornes||[]){const y=ROW[b.riel],red=b.color==='red';
+    s+=`<text x="14" y="${y+3}" font-size="9" fill="#d9dee4">${b.txt}</text><circle cx="${JACK_X}" cy="${y}" r="6" fill="${red?'#b51e2b':'#16181b'}" stroke="${red?'#5b0d14':'#000'}" stroke-width="1.5"/><circle cx="${JACK_X}" cy="${y}" r="2.2" fill="#000"/>`}
+  return s+'</g>';
+}
+function decorSVG(){
+  let s='';
+  const S=CONFIG.salidas;
+  if(S){const t=(x,txt)=>`<rect class="dec-box" x="${x-52}" y="14" width="104" height="26" rx="6"/><text class="t-ink" x="${x}" y="31" text-anchor="middle" font-size="11" font-weight="600">${txt}</text>`;
+    s+=`<g class="dec" id="dec-sal">`;
+    if(S.items.length===2&&S.centro!==undefined){const a=cx(S.items[0].c),b=cx(S.items[1].c),m=(a+b)/2;
+      s+=`<line x1="${a+52}" x2="${b-52}" y1="27" y2="27" stroke="var(--muted)" stroke-dasharray="4 5" stroke-width="1.4"/><rect x="${m-100}" y="18" width="200" height="18" rx="4" fill="var(--bench)"/><text class="t-muted" x="${m}" y="31" text-anchor="middle" font-size="10.5" id="sal-txt">${S.centro}</text>`}
+    s+=S.items.map(i=>t(cx(i.c),i.txt)).join('')+`</g>`}
+  const E=CONFIG.entradas;
+  if(E){s+=`<g class="dec" id="dec-in">`+E.items.map(i=>{const x=cx(i.c);const w=Math.max(48,i.txt.length*7+16);return `<rect class="dec-box" x="${x-w/2}" y="442" width="${w}" height="22" rx="5"/><text class="t-ink" x="${x}" y="457" text-anchor="middle" font-size="10.5" font-weight="600">${i.txt}</text><line x1="${x}" x2="${x}" y1="432" y2="442" stroke="var(--muted)"/>`}).join('')+`</g>`}
+  return s;
+}
+// ---------- piezas ----------
+function pinMark(q){return `<circle class="pin" cx="${q.x}" cy="${q.y}" r="2.3" fill="#9aa1a8" stroke="#5f666d" stroke-width=".7"/>`}
+function wireD(p){
+  if(p.curve){const a=hp(p.curve.from),b=hp(p.curve.to);return `M${a.x} ${a.y} C${cx(p.curve.c1[0])} ${p.curve.c1[1]} ${cx(p.curve.c2[0])} ${p.curve.c2[1]} ${b.x} ${b.y}`}
+  return 'M'+p.pts.map(hp).map(q=>q.x+' '+q.y).join(' L');
+}
+const wireEnds=p=>p.curve?[p.curve.from,p.curve.to]:p.pts;
+function renderWire(p){
+  const d=wireD(p),col=C[p.color]||p.color;
+  const out=p.color==='white'?'#8a9199':p.color==='black'?'#000':shade(col,.38);
+  let s=`<path class="wp" d="${d}" pathLength="1" fill="none" stroke="${out}" stroke-width="6.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path class="wp" d="${d}" pathLength="1" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path class="wp" d="${d}" pathLength="1" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="1.1" stroke-linecap="round" transform="translate(-.8 -.8)"/>`;
+  for(const e of wireEnds(p)) if(Array.isArray(e)) s+=pinMark(hp(e));
+  return s;
+}
+function leads(a,b){return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#8f959c" stroke-width="2.2" stroke-linecap="round"/><circle cx="${a.x}" cy="${a.y}" r="2.2" fill="#6c727a"/><circle cx="${b.x}" cy="${b.y}" r="2.2" fill="#6c727a"/>`}
+const RSIZE={'0.25':[43,14,'#e2c590'],'0.5':[60,17,'#d9b77a'],'1':[72,20,'#cfd6dc'],'2':[86,24,'#cfd6dc']};
+function renderRes(p){
+  const a=hp(p.a),b=hp(p.b),m={x:(a.x+b.x)/2,y:(a.y+b.y)/2},[L,T,fill]=RSIZE[String(p.w||'0.25')]||RSIZE['0.25'];
+  const ang=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;
+  let s=leads(a,b)+`<g class="drop"><g transform="translate(${m.x} ${m.y}) rotate(${ang})" filter="url(#sh)"><rect x="${-L/2}" y="${-T/2}" width="${L}" height="${T}" rx="${T/2}" fill="${fill}" stroke="#9f7d4c" stroke-width=".8"/>`;
+  const fr=p.bands.length===5?[.2,.31,.42,.53,.8]:[.22,.36,.5,.78],bw=L*.07;
+  p.bands.forEach((c,i)=>{s+=`<rect x="${-L/2+fr[i]*L-bw/2}" y="${-T/2+.6}" width="${bw}" height="${T-1.2}" fill="${BAND[c]}"/>`});
+  return s+`</g></g>`;
+}
+function renderDiode(p){
+  const a=hp(p.an),k=hp(p.ka),m={x:(a.x+k.x)/2,y:(a.y+k.y)/2},L=36,T=13,ang=Math.atan2(k.y-a.y,k.x-a.x)*180/Math.PI;
+  return leads(a,k)+`<g class="drop"><g transform="translate(${m.x} ${m.y}) rotate(${ang})" filter="url(#sh)"><rect x="${-L/2}" y="${-T/2}" width="${L}" height="${T}" rx="3.5" fill="${p.color||'#25262a'}"/><rect x="${L/2-8.5}" y="${-T/2}" width="4.5" height="${T}" fill="#c9ced4"/></g></g>`;
+}
+function renderLED(p){
+  const a=hp(p.an),k=hp(p.ka),m={x:(a.x+k.x)/2,y:(a.y+k.y)/2},ang=Math.atan2(k.y-a.y,k.x-a.x)*180/Math.PI,col=C[p.color]||p.color||'#e0262f';
+  return leads(a,k)+`<g class="drop"><g transform="translate(${m.x} ${m.y}) rotate(${ang})" filter="url(#sh)"><path d="M6 -9.5 A10 10 0 1 0 6 9.5 Z" fill="${col}" fill-opacity=".85" stroke="${shade(col.startsWith('#')?col:'#e0262f',.4)}"/><circle cx="-3" cy="-3" r="3" fill="#fff" opacity=".45"/></g></g>`;
+}
+function renderCap(p){ // cerámico o de poliéster: disco pequeño
+  const a=hp(p.a),b=hp(p.b),m={x:(a.x+b.x)/2,y:(a.y+b.y)/2},ang=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;
+  return leads(a,b)+`<g class="drop"><g transform="translate(${m.x} ${m.y}) rotate(${ang})" filter="url(#sh)"><rect x="-11" y="-7" width="22" height="14" rx="7" fill="#e88a1a" stroke="#9a5a10" stroke-width=".8"/></g><text x="${m.x}" y="${m.y+3}" text-anchor="middle" font-size="7.5" font-weight="700" fill="#3b2306">${p.code||''}</text></g>`;
+}
+function renderElec(p){ // electrolítico visto desde arriba
+  const a=hp(p.pos),b=hp(p.neg),m={x:(a.x+b.x)/2,y:(a.y+b.y)/2},r=p.r||11,ang=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;
+  return leads(a,b)+`<g class="drop"><g transform="translate(${m.x} ${m.y}) rotate(${ang})" filter="url(#sh)"><circle r="${r}" fill="#1f3f8a" stroke="#0f2252"/><path d="M${r*.35} ${-Math.sqrt(r*r-r*r*.1225)} A${r} ${r} 0 0 1 ${r*.35} ${Math.sqrt(r*r-r*r*.1225)} Z" fill="#c9d3e6"/><text x="${r*.66}" y="3" text-anchor="middle" font-size="9" font-weight="700" fill="#1f3f8a">−</text><circle r="${r*.45}" fill="none" stroke="#8aa0c8" stroke-width=".8"/></g></g>`;
+}
+function renderTO(p,W,D,tab){
+  const {x,y}=hp([p.c,p.r]),backTop=p.face>0;
+  let s=`<g class="drop" filter="url(#sh)"><rect x="${x-W/2}" y="${y-D/2}" width="${W}" height="${D}" rx="2" fill="#2a2c31"/>`;
+  s+=`<rect x="${x-W/2}" y="${backTop?y-D/2:y+D/2-tab}" width="${W}" height="${tab}" rx="1.5" fill="#b6bcc4"/>`;
+  const ty=backTop?y+D/2-3:y-D/2+9;
+  p.pins.forEach((L,i)=>{s+=`<text x="${x+(i-1)*P}" y="${ty}" text-anchor="middle" font-size="8.5" font-weight="700" fill="#f1f3f5">${L}</text>`});
+  return s+`</g>`;
+}
+function renderTO92(p){
+  const {x,y}=hp([p.c,p.r]),dir=p.flat,hw=20.5,fy=y+9*dir;
+  let s=`<g class="drop" filter="url(#sh)"><path d="M${x-hw} ${fy} L${x+hw} ${fy} A${hw} 23 0 0 ${dir>0?0:1} ${x-hw} ${fy} Z" fill="#232428"/>`;
+  p.pins.forEach((L,i)=>{s+=`<text x="${x+(i-1)*P}" y="${y+3}" text-anchor="middle" font-size="8.5" font-weight="700" fill="#f1f3f5">${L}</text>`});
+  return s+`</g>`;
+}
+function renderPot(p){
+  const {x,y}=hp([p.c,p.r]);
+  let s=`<g class="drop" filter="url(#sh)"><rect x="${x-24}" y="${y-22}" width="48" height="30" rx="3" fill="#2d5fb8"/><circle cx="${x}" cy="${y-7}" r="9" fill="#e8ecf2"/><line x1="${x}" y1="${y-15}" x2="${x}" y2="${y+1}" stroke="#2d5fb8" stroke-width="2.5"/>`;
+  p.pins.forEach((L,i)=>{s+=`<text x="${x+(i-1)*P}" y="${y+6}" text-anchor="middle" font-size="7.5" font-weight="700" fill="#fff">${L}</text>`});
+  return s+`</g>`;
+}
+function dipHole(p,i){const h=p.n/2;return i<=h?[p.c+i-1,'f']:[p.c+(p.n-i),'e']}
+function renderDIP(p){
+  const h=p.n/2,x0=cx(p.c)-9,x1=cx(p.c+h-1)+9,y0=ROW.e-5,y1=ROW.f+5,ym=(y0+y1)/2;
+  let s=`<g class="drop" filter="url(#sh)"><rect x="${x0}" y="${y0}" width="${x1-x0}" height="${y1-y0}" rx="3" fill="#1d1e21"/><path d="M${x0} ${ym-7} A7 7 0 0 1 ${x0} ${ym+7}" fill="#3a3c41"/><circle cx="${cx(p.c)}" cy="${y1-11}" r="2.6" fill="#55585f"/>`;
+  for(let i=1;i<=p.n;i++){const q=hp(dipHole(p,i));s+=`<rect x="${q.x-3}" y="${i<=h?y1-3:y0-1}" width="6" height="4" fill="#b8bcc2"/>`}
+  s+=`<text x="${(x0+x1)/2}" y="${ym+4}" text-anchor="middle" font-size="10" font-weight="700" fill="#e8eaed">${p.val||''}</text>`;
+  return s+`</g>`;
+}
+function renderPart(p){
+  switch(p.type){
+    case 'wire':return renderWire(p);
+    case 'res':return renderRes(p);
+    case 'diode':return renderDiode(p);
+    case 'led':return renderLED(p);
+    case 'cap':return renderCap(p);
+    case 'elec':return renderElec(p);
+    case 'to126':return renderTO(p,54,20,6);
+    case 'to220':return renderTO(p,58,17,7);
+    case 'to92':return renderTO92(p);
+    case 'pot':return renderPot(p);
+    case 'dip':return renderDIP(p);
+  }
+  throw new Error('tipo de pieza desconocido: '+p.type);
+}
+function holesOf(p){
+  if(['to92','to126','to220','pot'].includes(p.type)) return [-1,0,1].map(k=>[p.c+k,p.r]);
+  if(p.type==='res'||p.type==='cap') return [p.a,p.b];
+  if(p.type==='diode'||p.type==='led') return [p.an,p.ka];
+  if(p.type==='elec') return [p.pos,p.neg];
+  if(p.type==='dip') return Array.from({length:p.n},(_,i)=>dipHole(p,i+1));
+  return wireEnds(p).filter(Array.isArray);
+}
+function tagPos(p){
+  if(['to92','to126','to220','pot'].includes(p.type)){const q=hp([p.c,p.r]);return {x:q.x,y:isTop(p.r)?q.y-23:q.y+25}}
+  if(p.type==='dip'){return {x:(cx(p.c)+cx(p.c+p.n/2-1))/2,y:ROW.f+24}}
+  const h=holesOf(p);const a=hp(h[0]),b=hp(h[1]);const top=isTop(h[0][1]);
+  const o=(RSIZE[String(p.w)]||[0,14])[1]/2+8;
+  return {x:(a.x+b.x)/2,y:(top?Math.min(a.y,b.y)-o:Math.max(a.y,b.y)+o+1)};
+}
+function tagSVG(p){
+  const txt=`${p.ref} ${p.val||p.ohm||''}`.trim(),w=txt.length*5.7+12,{x,y}=tagPos(p);
+  return `<rect x="${x-w/2}" y="${y-8}" width="${w}" height="15" rx="4" fill="#132030" opacity=".93"/><text x="${x}" y="${y+3.2}" text-anchor="middle" font-size="9.5" font-weight="600" fill="#fff">${txt}</text>`;
+}
+svg.innerHTML=`<defs><filter id="sh" x="-30%" y="-40%" width="160%" height="180%"><feDropShadow dx=".8" dy="1.5" stdDeviation="1" flood-opacity=".33"/></filter></defs>`
+ +boardSVG()+supplySVG()+`<g id="L1"></g><g id="L2"></g><g id="L3"></g><g id="flowL"></g>`+decorSVG()+`<g id="rings"></g><g id="tags"></g>`;
+const LAY={1:svg.querySelector('#L1'),2:svg.querySelector('#L2'),3:svg.querySelector('#L3')};
+const tagsL=svg.querySelector('#tags'),ringsL=svg.querySelector('#rings'),flowL=svg.querySelector('#flowL');
+for(const p of PARTS){
+  const g=document.createElementNS(NS,'g');g.setAttribute('class','part');g.innerHTML=renderPart(p);
+  LAY[p.z||(p.type==='wire'?1:2)].appendChild(g);p.el=g;
+  if(p.ref){const t=document.createElementNS(NS,'g');t.setAttribute('class','tag');t.innerHTML=tagSVG(p);tagsL.appendChild(t);p.tag=t}
+}
+const byId=Object.fromEntries(PARTS.map(p=>[p.id,p]));
+// ---------- encabezado y leyenda ----------
+document.getElementById('kicker').textContent=CONFIG.kicker||'';
+document.getElementById('titulo').textContent=CONFIG.titulo||document.title;
+document.getElementById('sub').innerHTML=CONFIG.sub||'';
+document.getElementById('legend').innerHTML=(CONFIG.leyenda||[]).map(([c,t])=>`<div>${[].concat(c).map(k=>`<span class="sw" style="background:${C[k]||k}"></span>`).join('')}${t}</div>`).join('');
+// ---------- tarjetas ----------
+function pinoutSVG(spec){
+  const [kind,order,back]=spec;
+  if(kind==='diode') return `<svg viewBox="0 0 120 70" aria-hidden="true"><line x1="6" y1="32" x2="114" y2="32" stroke="#8f959c" stroke-width="3"/><rect x="34" y="20" width="52" height="24" rx="5" fill="#25262a"/><rect x="73" y="20" width="7" height="24" fill="#c9ced4"/><text class="ink" x="16" y="62" text-anchor="middle" font-size="11">A</text><text class="ink" x="104" y="62" text-anchor="middle" font-size="11">K</text></svg>`;
+  if(kind==='led') return `<svg viewBox="0 0 120 112" aria-hidden="true"><line x1="48" y1="60" x2="48" y2="104" stroke="#8f959c" stroke-width="3"/><line x1="72" y1="60" x2="72" y2="94" stroke="#8f959c" stroke-width="3"/><path d="M38 62 L38 30 A22 22 0 0 1 82 30 L82 62 Z" fill="#e0262f" fill-opacity=".85"/><line x1="82" y1="34" x2="82" y2="62" stroke="#fff" stroke-width="2"/><text class="ink" x="36" y="110" text-anchor="middle" font-size="11">A (larga)</text><text class="ink" x="90" y="104" text-anchor="middle" font-size="11">K</text></svg>`;
+  if(kind==='elec') return `<svg viewBox="0 0 120 112" aria-hidden="true"><line x1="48" y1="70" x2="48" y2="104" stroke="#8f959c" stroke-width="3"/><line x1="72" y1="70" x2="72" y2="94" stroke="#8f959c" stroke-width="3"/><rect x="34" y="6" width="52" height="64" rx="6" fill="#1f3f8a"/><rect x="70" y="6" width="16" height="64" fill="#c9d3e6"/><text x="78" y="42" text-anchor="middle" font-size="14" font-weight="700" fill="#1f3f8a">−</text><text class="ink" x="40" y="110" text-anchor="middle" font-size="11">+ (larga)</text><text class="ink" x="82" y="104" text-anchor="middle" font-size="11">−</text></svg>`;
+  if(kind==='dip'){const n=order||8,h=n/2;let s=`<svg viewBox="0 0 120 112" aria-hidden="true"><rect x="22" y="30" width="76" height="50" rx="3" fill="#1d1e21"/><path d="M22 47 A8 8 0 0 1 22 63" fill="#3a3c41"/><circle cx="31" cy="71" r="3" fill="#55585f"/>`;
+    for(let i=0;i<h;i++){const x=28+i*(64/(h-1||1));s+=`<text class="ink" x="${x}" y="98" text-anchor="middle" font-size="9">${i+1}</text><text class="ink" x="${x}" y="22" text-anchor="middle" font-size="9">${n-i}</text>`}
+    return s+`</svg>`}
+  const legs=order.map((L,i)=>`<line x1="${42+i*18}" y1="64" x2="${42+i*18}" y2="94" stroke="#8f959c" stroke-width="3"/><text class="ink" x="${42+i*18}" y="108" text-anchor="middle" font-size="12" font-weight="700">${L}</text>`).join('');
+  if(kind==='to126'||kind==='to220'){
+    const tab=kind==='to220'?`<rect x="30" y="0" width="60" height="26" rx="2" fill="#b6bcc4"/><circle cx="60" cy="12" r="6" fill="var(--surface-2)"/>`:'';
+    const face=back?`<rect x="28" y="${kind==='to220'?22:8}" width="64" height="${kind==='to220'?44:58}" rx="3" fill="#b6bcc4"/>`+(kind==='to126'?`<circle cx="60" cy="26" r="7" fill="var(--surface-2)"/>`:'')
+      :`<rect x="28" y="${kind==='to220'?22:8}" width="64" height="${kind==='to220'?44:58}" rx="3" fill="#2a2c31"/>`+(kind==='to126'?`<circle cx="60" cy="24" r="6" fill="var(--surface-2)"/>`:'')+`<text x="60" y="52" text-anchor="middle" font-size="10" fill="#e8eaed">${spec[4]||''}</text>`;
+    return `<svg viewBox="0 0 120 112" aria-hidden="true">${legs}${tab}${face}</svg>`;
+  }
+  const face=back?`<path d="M28 64 L28 34 A32 30 0 0 1 92 34 L92 64 Z" fill="#3a3c42"/>`
+    :`<path d="M28 64 L28 34 A32 30 0 0 1 92 34 L92 64 Z" fill="#232428"/><text x="60" y="52" text-anchor="middle" font-size="9.5" fill="#e8eaed">${spec[4]||''}</text>`;
+  return `<svg viewBox="0 0 120 112" aria-hidden="true">${legs}${face}</svg>`;
+}
+function connRow(p){
+  const sw=`<span class="sw" style="background:${C[p.color]||p.color||'#999'}"></span>`;
+  if(['to92','to126','to220','pot'].includes(p.type)) return [`<b>${p.ref}</b> ${p.val||''}`,p.pins.map((L,i)=>`${L} ${p.c-1+i}${p.r}`).join(' · '),p.nets.map(nn).join(', ')];
+  if(p.type==='res') return [`<b>${p.ref}</b> ${p.ohm||''}<br><span class="note">${p.bands.map(b=>BANDN[b]).join(', ')}</span>`,`${hn(p.a)} – ${hn(p.b)}`,`${nn(p.nets[0])} – ${nn(p.nets[1])}`];
+  if(p.type==='cap') return [`<b>${p.ref}</b> ${p.val||''}`,`${hn(p.a)} – ${hn(p.b)}`,`${nn(p.nets[0])} – ${nn(p.nets[1])}`];
+  if(p.type==='diode'||p.type==='led') return [`<b>${p.ref}</b> ${p.val||''}`,`A ${hn(p.an)} · K ${hn(p.ka)}`,`${nn(p.nets.an)} → ${nn(p.nets.ka)}`];
+  if(p.type==='elec') return [`<b>${p.ref}</b> ${p.val||''}`,`+ ${hn(p.pos)} · − ${hn(p.neg)}`,`${nn(p.nets.pos)} / ${nn(p.nets.neg)}`];
+  if(p.type==='dip') return [`<b>${p.ref}</b> ${p.val||''}`,`pata 1 en ${p.c}f · pata ${p.n} en ${p.c}e`,p.nets.map((n,i)=>`${i+1}:${nn(n)}`).join(' ')];
+  return [`${sw}cable ${CNAME[p.color]||''}`,wireEnds(p).map(hn).join(' – '),nn(p.net)];
+}
+const card=document.getElementById('card');
+let cur=1,timer=null,labelsOn=false,testState=null;
+const T=CONFIG.prueba;
+function renderCard(){
+  const s=STEPS[cur-1];
+  let h=`<div class="kicker">Paso ${cur} de ${STEPS.length}</div><h2>${s.t}</h2><p>${s.body}</p>`;
+  if(s.pin) h+=`<div class="pins">${s.pin.map(sp=>`<figure>${pinoutSVG(sp)}<figcaption>${sp[3]||''}</figcaption></figure>`).join('')}</div>`;
+  const ps=PARTS.filter(p=>p.step===cur);
+  if(ps.length) h+=`<div class="tblwrap"><table class="conn"><tr><th>Pieza</th><th>Huecos</th><th>Nodo</th></tr>${ps.map(p=>{const r=connRow(p);return `<tr><td>${r[0]}</td><td class="h">${r[1]}</td><td>${r[2]}</td></tr>`}).join('')}</table></div>`;
+  if(s.extra) h+=s.extra;
+  if(s.test&&T) h+=testHTML();
+  if(s.why) h+=`<div class="why"><span class="kicker">Para la sustentación</span><p>${s.why}</p></div>`;
+  card.innerHTML=h;
+  if(s.test&&T){card.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>setTest(b.dataset.s)));updateTest()}
+}
+function testHTML(){
+  return `<div class="seg" role="group" aria-label="Estados de prueba">${T.estados.map(e=>`<button type="button" data-s="${e.id}">${e.boton}</button>`).join('')}</div>
+   <div class="reads">${(T.lecturas||[]).map(([k,id])=>`<div class="read"><div class="k">${k}</div><div class="v" data-r="${id}"></div></div>`).join('')}</div>
+   <div class="states" id="r-st"></div><p id="r-txt"></p>${T.nota?`<p class="note">${T.nota}</p>`:''}${T.alerta?`<div class="alert">${T.alerta}</div>`:''}`;
+}
+function setTest(id){
+  if(!T) return;
+  const E=T.estados.find(e=>e.id===id)||T.estados[0];testState=E.id;
+  // los cables "interruptor" (sw:true) vuelven a su destino de reposo salvo que el estado los mueva
+  for(const p of PARTS) if(p.sw){p.pts=[p.pts[0],(E.sw&&E.sw[p.id])||p.swOff];p.el.innerHTML=renderPart(p)}
+  PARTS.forEach(p=>p.el.classList.toggle('active',(E.activos||[]).includes(p.id)));
+  flowL.innerHTML=(E.flujo||[]).map(f=>`<path class="flow" d="M${f.map(hp).map(q=>q.x+' '+q.y).join(' L')}"/>`).join('');
+  const st=svg.querySelector('#sal-txt');if(st&&CONFIG.salidas) st.textContent=E.salida||CONFIG.salidas.centro;
+  updateTest();
+}
+function updateTest(){
+  const E=T&&T.estados.find(e=>e.id===testState);if(!E||!card.querySelector('#r-txt'))return;
+  card.querySelectorAll('[data-r]').forEach(el=>{el.textContent=(E.lecturas||{})[el.dataset.r]??'—'});
+  card.querySelector('#r-txt').textContent=E.texto||'';
+  card.querySelector('#r-st').innerHTML=(T.chips||[]).map(x=>`<span class="st ${(E.encendidos||[]).includes(x)?'on':''}">${x} ${(E.encendidos||[]).includes(x)?'ON':'off'}</span>`).join('');
+  card.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.s===testState)));
+}
+for(const p of PARTS) if(p.sw) p.swOff=p.pts[1];
+// ---------- pasos ----------
+const list=document.getElementById('steps');
+list.innerHTML=STEPS.map((s,i)=>`<li><button type="button" class="chip" data-i="${i+1}"><span class="n">${String(i+1).padStart(2,'0')}</span><span>${s.t}</span></button></li>`).join('');
+list.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{stop();go(+b.dataset.i)}));
+function go(n,animate=true){
+  const prev=cur;cur=Math.max(1,Math.min(STEPS.length,n));
+  if(T&&(cur!==prev||!STEPS[cur-1].test||testState===null)) setTest(T.estados[0].id);
+  svg.classList.toggle('testing',!!STEPS[cur-1].test);
+  svg.classList.toggle('step1',cur===1);
+  const now=[];
+  PARTS.forEach(p=>{p.el.classList.remove('anim');p.el.classList.toggle('on',p.step<=cur);if(p.step===cur)now.push(p);
+    if(p.tag)p.tag.classList.toggle('on',p.step<=cur&&(labelsOn||p.step===cur))});
+  const ds=svg.querySelector('#dec-sal');if(ds)ds.classList.toggle('on',cur>=CONFIG.salidas.paso);
+  const di=svg.querySelector('#dec-in');if(di)di.classList.toggle('on',cur>=CONFIG.entradas.paso);
+  const ps=svg.querySelector('#psu');if(ps)ps.classList.toggle('lit',cur>=(CONFIG.fuente.paso||99));
+  ringsL.innerHTML=now.flatMap(holesOf).map(h=>{const q=hp(h);return `<circle class="ring" cx="${q.x}" cy="${q.y}" r="6.5"/>`}).join('');
+  if(animate&&!reduce){void svg.getBoundingClientRect();now.forEach((p,i)=>{p.el.style.setProperty('--d',(i*.2)+'s');p.el.classList.add('anim')})}
+  document.getElementById('counter').textContent=`Paso ${cur} / ${STEPS.length}`;
+  document.getElementById('prev').disabled=cur===1;
+  document.getElementById('next').disabled=cur===STEPS.length;
+  list.querySelectorAll('.chip').forEach(b=>{const i=+b.dataset.i;b.classList.toggle('cur',i===cur);b.classList.toggle('done',i<cur);b.setAttribute('aria-current',i===cur?'step':'false')});
+  renderCard();
+}
+const playBtn=document.getElementById('play');
+function stop(){if(timer){clearInterval(timer);timer=null}playBtn.textContent='▶ Reproducir'}
+function play(){if(cur===STEPS.length)go(1);playBtn.textContent='❚❚ Pausa';timer=setInterval(()=>{if(cur>=STEPS.length){stop();return}go(cur+1)},4200)}
+playBtn.addEventListener('click',()=>timer?stop():play());
+document.getElementById('prev').addEventListener('click',()=>{stop();go(cur-1)});
+document.getElementById('next').addEventListener('click',()=>{stop();go(cur+1)});
+document.getElementById('replay').addEventListener('click',()=>{stop();go(cur)});
+document.getElementById('labels').addEventListener('change',e=>{labelsOn=e.target.checked;go(cur,false)});
+document.addEventListener('keydown',e=>{if(e.target.closest&&e.target.closest('input,button'))return;if(e.key==='ArrowRight'){stop();go(cur+1)}if(e.key==='ArrowLeft'){stop();go(cur-1)}});
+go(1,false);
+</script>
