@@ -37,7 +37,35 @@ Lo que sigue salió de montar y verificar circuitos reales con esta plantilla. C
 - **Cómo evitar cruces:** dos cables largos que recorren el mismo tramo horizontal no se cruzan si van por **filas distintas** y ninguno termina dentro del tramo del otro en su misma fila. Las columnas de la protoboard hacen el resto, porque llevan la conexión por debajo. Ejemplo verificado: `13i→33i` y `25g→5g` se solapan en x pero no se tocan.
 - Un cable no debe pasar justo encima del hueco donde termina otra pieza en la misma fila. Se ve como si conectara.
 - Si un cable sale de la protoboard por encima de los rieles (hacia una carga externa), hazlo salir por una columna **sin hueco** en el riel (ver `huecoRiel0`). Así no parece enchufado al riel.
-- Usa curvas (`curve`) solo para cables largos que no pueden ir rectos. Una curva Bézier cuyo punto de control está sobre la recta entre los extremos es una recta.
+- **Todos los cables son rectos**: un solo tramo horizontal (misma fila) o vertical (misma columna). Nada de curvas, diagonales ni codos; el verificador los rechaza. Así se ve un montaje limpio, con cables cortados a medida y pegados a la protoboard.
+- Las **esquinas las hace la protoboard**. Si dos puntos no están en la misma fila ni en la misma columna, lleva un cable horizontal hasta una columna y sigue desde **otro hueco de esa misma columna** con otro cable, o con la pata de un componente. Ejemplo: de `25f` a `11d` no se va en diagonal: `25f–25e` cruza la canaleta y `25d–11d` recorre la fila.
+- Mejor todavía: planifica las columnas para que las conexiones queden alineadas desde el principio. El colector del transistor de mando en la misma columna que el extremo de su resistencia se une con un puente vertical corto.
+- Los cables verticales que cruzan los rieles (de la fila a al riel exterior, o de una protoboard a otra) pasan por encima de los rieles de en medio. Si el cable no debe conectarse a ellos, elige una columna sin hueco en el riel.
+
+## LEDs
+
+- Un LED **siempre** va con una resistencia en serie: R = (V<sub>fuente</sub> − V<sub>F</sub>) / I. Usa I ≈ 10 mA para indicadores, y calcula y escribe el valor en `info`.
+- Patas en columnas contiguas de la misma fila: ánodo (pata larga) del lado de la resistencia o del positivo, y cátodo (lado plano) hacia GND o hacia el transistor que lo controla.
+- El cuerpo de 5 mm mide unos 32 px: ocupa media fila arriba y abajo de su fila. No pongas otros cuerpos en las filas vecinas sobre esas columnas. Usa `d:3` si hay poco espacio.
+- En la prueba, enciende el LED con `luces` en los estados en que conduce y da su corriente en `lecturas`.
+- Escribe en el paso cómo se identifica la polaridad: pata larga, lado plano y, dentro de la cápsula, el yunque grande es el cátodo.
+
+## Condensadores
+
+- Electrolíticos: la franja «−» hacia GND o hacia el nodo más negativo. Dilo en el texto del paso con el hueco exacto del positivo. Al revés se calientan y pueden reventar.
+- Cerámicos: escribe el código impreso en `code` (`104`). La animación lo traduce y así el estudiante lo encuentra entre sus piezas.
+- Los condensadores de desacople (100 nF) van lo más cerca posible de las patas de alimentación del integrado.
+
+## Dos protoboards
+
+Usa `tableros:2` cuando el circuito no cabe en una protoboard con buena separación. Señales para decidirlo: más de unas 45 columnas ocupadas en la de 400 puntos (o de 60 en la de 830), filas tan llenas que los cuerpos se tocan, o bloques que conviene separar (potencia y lógica, alta corriente y señal).
+
+- **Divide por bloques funcionales** para que pasen pocos cables entre protoboards: la alimentación y una o dos señales.
+- **Une siempre los rieles**: GND común y la alimentación que se necesite, con cables verticales rectos de la protoboard 1 a la 2. Sin GND común, la segunda protoboard no tiene referencia.
+- La fuente se conecta a la protoboard 1. Los rieles de arriba y de abajo de una misma protoboard tampoco están unidos entre sí: si se usan los dos, únelos.
+- Las señales entre protoboards bajan por una columna sin hueco en los rieles, para no parecer conectadas a ellos.
+- En el primer paso explica qué va en cada protoboard. En los textos escribe los huecos como `P2·16e`.
+- Ejemplo verificado: `assets/ejemplo_555_dos_protoboards.html`.
 
 ## Entradas, salidas y fuente
 

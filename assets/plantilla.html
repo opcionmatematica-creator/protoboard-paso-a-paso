@@ -133,7 +133,15 @@ aside{display:grid;gap:14px;min-width:0}
 @keyframes drop{from{opacity:0;transform:translateY(-34px)}to{opacity:1;transform:none}}
 @keyframes draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
 @keyframes fade{from{opacity:0}to{opacity:1}}
-.testing .part.on:not(.active){opacity:.42}
+.testing .part.on:not(.active):not(.lit){opacity:.42}
+.halo{opacity:0;transition:opacity .25s}
+.part.lit .halo{opacity:.5}
+.part.lit .dome{fill-opacity:.95}
+.part.lit .core{opacity:.8}
+.flujo-btn{font:600 14px var(--f-body);padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);cursor:pointer;margin:0 0 12px}
+.flujo-btn[aria-pressed="true"]{background:#00a6d6;border-color:#00a6d6;color:#fff}
+.flujo-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tab-lab{font-size:11px;font-weight:600;letter-spacing:.08em;fill:var(--muted)}
 .part.active{filter:drop-shadow(0 0 3px #00c2ff) drop-shadow(0 0 1px #00c2ff)}
 .flow{fill:none;stroke:#00c2ff;stroke-width:3;stroke-dasharray:5 9;stroke-linecap:round;stroke-linejoin:round;animation:flow .55s linear infinite}
 @keyframes flow{to{stroke-dashoffset:-14}}
@@ -192,6 +200,8 @@ const STEPS=[{t:'Orienta la protoboard',body:'…'}];
 
 // ================= motor (no hace falta tocarlo) =================
 const P=18,BX=110,BY=90,NC=CONFIG.columnas||40,BW=48+(NC-1)*P,BH=342,SAL_Y=44,JACK_X=70;
+const NB=CONFIG.tableros||1,OFF=372,dyB=b=>((b||1)-1)*OFF;   // protoboard 2 va debajo de la 1
+const rielesDe=b=>Array.isArray(CONFIG.rieles)?(CONFIG.rieles[(b||1)-1]||{}):(CONFIG.rieles||{});
 const cx=c=>BX+24+(c-1)*P;
 const ROW={'T-':108,'T+':126,a:162,b:180,c:198,d:216,e:234,f:288,g:306,h:324,i:342,j:360,'B-':396,'B+':414};
 const railHole=c=>(((c-(CONFIG.huecoRiel0??4))%6)+6)%6!==0;
@@ -203,24 +213,26 @@ const RAILN={'T+':'riel sup. +','T-':'riel sup. −','B-':'riel inf. −','B+':'
 const nn=n=>(n||'').replace(/^\+(\d+(?:\.\d+)?)V$/,'+$1 V');
 const isTop=r=>'abcde'.includes(r);
 function hp(h){
-  if(Array.isArray(h)) return {x:cx(h[0]),y:ROW[h[1]]};
+  if(Array.isArray(h)) return {x:cx(h[0]),y:ROW[h[1]]+dyB(h[2])};
   if(h.sal!==undefined) return {x:cx(h.sal),y:h.y??SAL_Y};
-  if(h.fuente!==undefined) return {x:JACK_X,y:ROW[h.fuente]};
+  if(h.fuente!==undefined) return {x:JACK_X,y:ROW[h.fuente]+dyB(h.tab)};
   return h;
 }
 function hn(h){
   if(!Array.isArray(h)) return h.sal!==undefined?'salida':'fuente';
-  return h[1].length===1?h[0]+h[1]:(CONFIG.rieles[h[1]]&&CONFIG.rieles[h[1]]!=='sin usar'?'riel '+CONFIG.rieles[h[1]]:RAILN[h[1]]);
+  const pre=NB>1?`P${h[2]||1}·`:'',rn=rielesDe(h[2])[h[1]];
+  return pre+(h[1].length===1?h[0]+h[1]:(rn&&rn!=='sin usar'?'riel '+rn:RAILN[h[1]]));
 }
 const svg=document.getElementById('bb');
 const NS='http://www.w3.org/2000/svg';
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const VBW=BX+BW+64;
-svg.setAttribute('viewBox',`0 0 ${VBW} 478`);
+const VY0=CONFIG.salidas?0:66,VYH=478+dyB(NB)-VY0-(CONFIG.entradas?0:34);   // sin salidas/entradas no se deja espacio vacío
+svg.setAttribute('viewBox',`0 ${VY0} ${VBW} ${VYH}`);
 function shade(hex,k){const n=parseInt(hex.slice(1),16);let r=n>>16,g=(n>>8)&255,b=n&255;return `rgb(${Math.round(r*(1-k))},${Math.round(g*(1-k))},${Math.round(b*(1-k))})`}
 
-function boardSVG(){
-  let s=`<rect x="${BX}" y="${BY}" width="${BW}" height="${BH}" rx="9" fill="#f5f3ec" stroke="#cdc8b8"/>`;
+function boardSVG(b){
+  let s=(NB>1?`<text class="tab-lab" x="${BX+4}" y="${BY-7}">PROTOBOARD ${b}</text>`:'')+`<rect x="${BX}" y="${BY}" width="${BW}" height="${BH}" rx="9" fill="#f5f3ec" stroke="#cdc8b8"/>`;
   s+=`<line x1="${BX+8}" x2="${BX+BW-8}" y1="140" y2="140" stroke="#e2ddd0"/><line x1="${BX+8}" x2="${BX+BW-8}" y1="382" y2="382" stroke="#e2ddd0"/>`;
   s+=`<rect x="${BX+8}" y="254" width="${BW-16}" height="14" rx="3" fill="#e4dfd2"/>`;
   const st=(y,c)=>`<line class="stripe" x1="${BX+18}" x2="${BX+BW-18}" y1="${y}" y2="${y}" stroke="${c}" stroke-width="1.8"/>`;
@@ -237,15 +249,16 @@ function boardSVG(){
   const sg=(y,ch,col)=>`<text x="${BX+11}" y="${y+4}" text-anchor="middle" font-size="12" font-weight="700" fill="${col}">${ch}</text><text x="${BX+BW-11}" y="${y+4}" text-anchor="middle" font-size="12" font-weight="700" fill="${col}">${ch}</text>`;
   s+=sg(108,'−','#3d6fd1')+sg(126,'+','#d23b3b')+sg(396,'−','#3d6fd1')+sg(414,'+','#d23b3b');
   const lx=BX+BW+8;
-  for(const [r,y] of [['T-',112],['T+',130],['B-',400],['B+',418]]) s+=`<text class="rail-lab" x="${lx}" y="${y}">${CONFIG.rieles[r]||'sin usar'}</text>`;
-  return s;
+  for(const [r,y] of [['T-',112],['T+',130],['B-',400],['B+',418]]) s+=`<text class="rail-lab" x="${lx}" y="${y}">${rielesDe(b)[r]||'sin usar'}</text>`;
+  return `<g transform="translate(0 ${dyB(b)})">${s}</g>`;
 }
 function supplySVG(){
   const F=CONFIG.fuente; if(!F) return '';
-  let s=`<g id="psu"><rect x="6" y="94" width="76" height="336" rx="7" fill="#2b3139" stroke="#1a1e23"/>
-  <text x="44" y="111" text-anchor="middle" font-size="9.5" font-weight="600" fill="#d9dee4">FUENTE DC</text>`;
+  const yMax=Math.max(430,...(F.bornes||[]).map(b=>ROW[b.riel]+dyB(b.tab)+16));
+  let s=`<g id="psu"><rect x="6" y="94" width="76" height="${yMax-94}" rx="7" fill="#2b3139" stroke="#1a1e23"/>
+  <text x="44" y="${yMax-10}" text-anchor="middle" font-size="9.5" font-weight="600" fill="#d9dee4">FUENTE DC</text>`;
   (F.lcd||[]).forEach((l,i)=>{const y=150+i*150;s+=`<rect class="lcd" x="13" y="${y}" width="62" height="40" rx="3"/><text class="lcd-t" x="44" y="${y+16}" text-anchor="middle">${l[0]}</text><text class="lcd-t" x="44" y="${y+31}" text-anchor="middle">${l[1]||''}</text>`});
-  for(const b of F.bornes||[]){const y=ROW[b.riel],red=b.color==='red';
+  for(const b of F.bornes||[]){const y=ROW[b.riel]+dyB(b.tab),red=b.color==='red';
     s+=`<text x="14" y="${y+3}" font-size="9" fill="#d9dee4">${b.txt}</text><circle cx="${JACK_X}" cy="${y}" r="6" fill="${red?'#b51e2b':'#16181b'}" stroke="${red?'#5b0d14':'#000'}" stroke-width="1.5"/><circle cx="${JACK_X}" cy="${y}" r="2.2" fill="#000"/>`}
   return s+'</g>';
 }
@@ -258,7 +271,7 @@ function decorSVG(){
       s+=`<line x1="${a+52}" x2="${b-52}" y1="27" y2="27" stroke="var(--muted)" stroke-dasharray="4 5" stroke-width="1.4"/><rect x="${m-100}" y="18" width="200" height="18" rx="4" fill="var(--bench)"/><text class="t-muted" x="${m}" y="31" text-anchor="middle" font-size="10.5" id="sal-txt">${S.centro}</text>`}
     s+=S.items.map(i=>t(cx(i.c),i.txt)).join('')+`</g>`}
   const E=CONFIG.entradas;
-  if(E){s+=`<g class="dec" id="dec-in">`+E.items.map(i=>{const x=cx(i.c);const w=Math.max(48,i.txt.length*7+16);return `<rect class="dec-box" x="${x-w/2}" y="442" width="${w}" height="22" rx="5"/><text class="t-ink" x="${x}" y="457" text-anchor="middle" font-size="10.5" font-weight="600">${i.txt}</text><line x1="${x}" x2="${x}" y1="432" y2="442" stroke="var(--muted)"/>`}).join('')+`</g>`}
+  if(E){s+=`<g class="dec" id="dec-in">`+E.items.map(i=>{const x=cx(i.c);const w=Math.max(48,i.txt.length*7+16);return `<rect class="dec-box" x="${x-w/2}" y="${442+dyB(NB)}" width="${w}" height="22" rx="5"/><text class="t-ink" x="${x}" y="${457+dyB(NB)}" text-anchor="middle" font-size="10.5" font-weight="600">${i.txt}</text><line x1="${x}" x2="${x}" y1="${432+dyB(NB)}" y2="${442+dyB(NB)}" stroke="var(--muted)"/>`}).join('')+`</g>`}
   return s;
 }
 // ---------- piezas ----------
@@ -292,20 +305,49 @@ function renderDiode(p){
   const a=hp(p.an),k=hp(p.ka),m={x:(a.x+k.x)/2,y:(a.y+k.y)/2},L=36,T=13,ang=Math.atan2(k.y-a.y,k.x-a.x)*180/Math.PI;
   return leads(a,k)+`<g class="drop"><g transform="translate(${m.x} ${m.y}) rotate(${ang})" filter="url(#sh)"><rect x="${-L/2}" y="${-T/2}" width="${L}" height="${T}" rx="3.5" fill="${p.color||'#25262a'}"/><rect x="${L/2-8.5}" y="${-T/2}" width="4.5" height="${T}" fill="#c9ced4"/></g></g>`;
 }
-function renderLED(p){
-  const a=hp(p.an),k=hp(p.ka),m={x:(a.x+k.x)/2,y:(a.y+k.y)/2},ang=Math.atan2(k.y-a.y,k.x-a.x)*180/Math.PI,col=C[p.color]||p.color||'#e0262f';
-  return leads(a,k)+`<g class="drop"><g transform="translate(${m.x} ${m.y}) rotate(${ang})" filter="url(#sh)"><path d="M6 -9.5 A10 10 0 1 0 6 9.5 Z" fill="${col}" fill-opacity=".85" stroke="${shade(col.startsWith('#')?col:'#e0262f',.4)}"/><circle cx="-3" cy="-3" r="3" fill="#fff" opacity=".45"/></g></g>`;
+const LEDC={red:'#ff2b2b',green:'#1fd65a',yellow:'#ffd21f',orange:'#ff8c1a',blue:'#2f7bff',white:'#eef3ff',violet:'#a24bff'};
+const LEDN={red:'rojo',green:'verde',yellow:'amarillo',orange:'naranja',blue:'azul',white:'blanco',violet:'violeta'};
+function renderLED(p){ // vista desde arriba: lado plano = cátodo; dentro, el yunque (grande) es el cátodo y el poste el ánodo
+  const a=hp(p.an),k=hp(p.ka),m={x:(a.x+k.x)/2,y:(a.y+k.y)/2},ang=Math.atan2(k.y-a.y,k.x-a.x)*180/Math.PI;
+  const col=LEDC[p.color]||p.color||LEDC.red,r=p.d==3?12:16,fx=r*.8,fy=Math.sqrt(r*r-fx*fx).toFixed(2);
+  return leads(a,k)+`<g class="drop"><g transform="translate(${m.x} ${m.y}) rotate(${ang})">
+   <circle class="halo" r="${r+10}" fill="${col}" filter="url(#glow)"/>
+   <g filter="url(#sh)"><path class="dome" d="M${fx} ${-fy} A${r} ${r} 0 1 0 ${fx} ${fy} Z" fill="${col}" fill-opacity=".6" stroke="${col.startsWith('#')?shade(col,.35):'#555'}" stroke-width="1.3"/>
+   <path d="M${r*.08} ${-r*.45} L${r*.55} ${-r*.45} L${r*.55} ${r*.45} L${r*.08} ${r*.45} Z" fill="#6f747b" opacity=".75"/>
+   <rect x="${-r*.5}" y="${-r*.13}" width="${r*.32}" height="${r*.26}" fill="#8f959c" opacity=".8"/>
+   <circle class="core" r="${r*.5}" fill="#fff" opacity="0"/>
+   <circle cx="${-r*.38}" cy="${-r*.42}" r="${r*.2}" fill="#fff" opacity=".6"/></g></g></g>`;
 }
-function renderCap(p){ // cerámico o de poliéster: disco pequeño
-  const a=hp(p.a),b=hp(p.b),m={x:(a.x+b.x)/2,y:(a.y+b.y)/2},ang=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;
-  return leads(a,b)+`<g class="drop"><g transform="translate(${m.x} ${m.y}) rotate(${ang})" filter="url(#sh)"><rect x="-11" y="-7" width="22" height="14" rx="7" fill="#e88a1a" stroke="#9a5a10" stroke-width=".8"/></g><text x="${m.x}" y="${m.y+3}" text-anchor="middle" font-size="7.5" font-weight="700" fill="#3b2306">${p.code||''}</text></g>`;
+function codigoCap(code){ // 104 → 100 nF (dos cifras × 10^tercera, en pF)
+  const m=/^(\d)(\d)(\d)$/.exec(String(code||''));if(!m) return '';
+  let pf=(+m[1]*10+ +m[2])*Math.pow(10,+m[3]);
+  const f=(v,u)=>`${+v.toPrecision(3)} ${u}`;
+  return pf>=1e6?f(pf/1e6,'µF'):pf>=1e3?f(pf/1e3,'nF'):f(pf,'pF');
 }
-function renderElec(p){ // electrolítico visto desde arriba
-  const a=hp(p.pos),b=hp(p.neg),m={x:(a.x+b.x)/2,y:(a.y+b.y)/2},r=p.r||11,ang=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;
-  return leads(a,b)+`<g class="drop"><g transform="translate(${m.x} ${m.y}) rotate(${ang})" filter="url(#sh)"><circle r="${r}" fill="#1f3f8a" stroke="#0f2252"/><path d="M${r*.35} ${-Math.sqrt(r*r-r*r*.1225)} A${r} ${r} 0 0 1 ${r*.35} ${Math.sqrt(r*r-r*r*.1225)} Z" fill="#c9d3e6"/><text x="${r*.66}" y="3" text-anchor="middle" font-size="9" font-weight="700" fill="#1f3f8a">−</text><circle r="${r*.45}" fill="none" stroke="#8aa0c8" stroke-width=".8"/></g></g>`;
+function renderCap(p){ // no polarizado: estilo 'ceramico' (disco, por defecto), 'poliester' (caja) o 'mlcc' (gota pequeña)
+  const a=hp(p.a),b=hp(p.b),m={x:(a.x+b.x)/2,y:(a.y+b.y)/2},est=p.estilo||'ceramico';
+  let body;
+  if(est==='poliester'){const txt=p.code||p.val||'';
+    body=`<rect x="${m.x-15}" y="${m.y-9}" width="30" height="18" rx="3" fill="#2f74c9" stroke="#1b4a85"/><rect x="${m.x-15}" y="${m.y-9}" width="30" height="5" rx="2" fill="#5b97e0" opacity=".7"/><text x="${m.x}" y="${m.y+4.5}" text-anchor="middle" font-size="7.5" font-weight="700" fill="#fff">${txt}</text>`}
+  else if(est==='mlcc'){
+    body=`<ellipse cx="${m.x}" cy="${m.y}" rx="8" ry="6.5" fill="#d9a441" stroke="#8a6420"/><ellipse cx="${m.x-2.5}" cy="${m.y-2.5}" rx="2.6" ry="1.8" fill="#fff" opacity=".45"/>`}
+  else {
+    body=`<circle cx="${m.x}" cy="${m.y}" r="12" fill="#c8641c" stroke="#7e3a0c"/><circle cx="${m.x}" cy="${m.y}" r="9.5" fill="#df8a3a"/><ellipse cx="${m.x-4}" cy="${m.y-5}" rx="4" ry="2.4" fill="#fff" opacity=".35"/><text x="${m.x}" y="${m.y+3}" text-anchor="middle" font-size="8" font-weight="700" fill="#3b1f06">${p.code||''}</text>`}
+  return leads(a,b)+`<g class="drop"><g filter="url(#sh)">${body}</g></g>`;
+}
+function renderElec(p){ // electrolítico visto desde arriba: funda, franja negativa con «−», tapa de aluminio con ranura
+  const a=hp(p.pos),b=hp(p.neg),m={x:(a.x+b.x)/2,y:(a.y+b.y)/2},r=p.r||12,ang=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;
+  const t=r*.66,s1=Math.sin(Math.PI/3.2)*r,c1=Math.cos(Math.PI/3.2)*r;
+  let marcas='';for(const yy of [-r*.42,0,r*.42]) marcas+=`<line x1="${r*.78}" y1="${yy-2}" x2="${r*.78}" y2="${yy+2}" stroke="#1c3f86" stroke-width="1.6"/>`;
+  return leads(a,b)+`<g class="drop"><g transform="translate(${m.x} ${m.y}) rotate(${ang})" filter="url(#sh)">
+   <circle r="${r}" fill="${p.color||'#1c3f86'}" stroke="#0e2252"/>
+   <path d="M${c1} ${-s1} A${r} ${r} 0 0 1 ${c1} ${s1} L${c1*.62} ${s1*.62} A${r*.62} ${r*.62} 0 0 0 ${c1*.62} ${-s1*.62} Z" fill="#cfd8ea"/>${marcas}
+   <circle r="${t}" fill="#c8cdd4" stroke="#8d939b" stroke-width=".8"/>
+   <path d="M${-t*.7} 0 L${t*.7} 0 M0 ${-t*.7} L0 ${t*.7}" stroke="#7d838b" stroke-width="1.2"/>
+   <circle cx="${-t*.35}" cy="${-t*.4}" r="${t*.22}" fill="#fff" opacity=".5"/></g></g>`;
 }
 function renderTO(p,W,D,tab){
-  const {x,y}=hp([p.c,p.r]),backTop=p.face>0;
+  const {x,y}=hp([p.c,p.r,p.tab]),backTop=p.face>0;
   let s=`<g class="drop" filter="url(#sh)"><rect x="${x-W/2}" y="${y-D/2}" width="${W}" height="${D}" rx="2" fill="#2a2c31"/>`;
   s+=`<rect x="${x-W/2}" y="${backTop?y-D/2:y+D/2-tab}" width="${W}" height="${tab}" rx="1.5" fill="#b6bcc4"/>`;
   const ty=backTop?y+D/2-3:y-D/2+9;
@@ -313,20 +355,20 @@ function renderTO(p,W,D,tab){
   return s+`</g>`;
 }
 function renderTO92(p){
-  const {x,y}=hp([p.c,p.r]),dir=p.flat,hw=20.5,fy=y+9*dir;
+  const {x,y}=hp([p.c,p.r,p.tab]),dir=p.flat,hw=20.5,fy=y+9*dir;
   let s=`<g class="drop" filter="url(#sh)"><path d="M${x-hw} ${fy} L${x+hw} ${fy} A${hw} 23 0 0 ${dir>0?0:1} ${x-hw} ${fy} Z" fill="#232428"/>`;
   p.pins.forEach((L,i)=>{s+=`<text x="${x+(i-1)*P}" y="${y+3}" text-anchor="middle" font-size="8.5" font-weight="700" fill="#f1f3f5">${L}</text>`});
   return s+`</g>`;
 }
 function renderPot(p){
-  const {x,y}=hp([p.c,p.r]);
+  const {x,y}=hp([p.c,p.r,p.tab]);
   let s=`<g class="drop" filter="url(#sh)"><rect x="${x-24}" y="${y-22}" width="48" height="30" rx="3" fill="#2d5fb8"/><circle cx="${x}" cy="${y-7}" r="9" fill="#e8ecf2"/><line x1="${x}" y1="${y-15}" x2="${x}" y2="${y+1}" stroke="#2d5fb8" stroke-width="2.5"/>`;
   p.pins.forEach((L,i)=>{s+=`<text x="${x+(i-1)*P}" y="${y+6}" text-anchor="middle" font-size="7.5" font-weight="700" fill="#fff">${L}</text>`});
   return s+`</g>`;
 }
-function dipHole(p,i){const h=p.n/2;return i<=h?[p.c+i-1,'f']:[p.c+(p.n-i),'e']}
+function dipHole(p,i){const h=p.n/2;return i<=h?[p.c+i-1,'f',p.tab]:[p.c+(p.n-i),'e',p.tab]}
 function renderDIP(p){
-  const h=p.n/2,x0=cx(p.c)-9,x1=cx(p.c+h-1)+9,y0=ROW.e-5,y1=ROW.f+5,ym=(y0+y1)/2;
+  const h=p.n/2,dy=dyB(p.tab),x0=cx(p.c)-9,x1=cx(p.c+h-1)+9,y0=ROW.e-5+dy,y1=ROW.f+5+dy,ym=(y0+y1)/2;
   let s=`<g class="drop" filter="url(#sh)"><rect x="${x0}" y="${y0}" width="${x1-x0}" height="${y1-y0}" rx="3" fill="#1d1e21"/><path d="M${x0} ${ym-7} A7 7 0 0 1 ${x0} ${ym+7}" fill="#3a3c41"/><circle cx="${cx(p.c)}" cy="${y1-11}" r="2.6" fill="#55585f"/>`;
   for(let i=1;i<=p.n;i++){const q=hp(dipHole(p,i));s+=`<rect x="${q.x-3}" y="${i<=h?y1-3:y0-1}" width="6" height="4" fill="#b8bcc2"/>`}
   s+=`<text x="${(x0+x1)/2}" y="${ym+4}" text-anchor="middle" font-size="10" font-weight="700" fill="#e8eaed">${p.val||''}</text>`;
@@ -349,7 +391,7 @@ function renderPart(p){
   throw new Error('tipo de pieza desconocido: '+p.type);
 }
 function holesOf(p){
-  if(['to92','to126','to220','pot'].includes(p.type)) return [-1,0,1].map(k=>[p.c+k,p.r]);
+  if(['to92','to126','to220','pot'].includes(p.type)) return [-1,0,1].map(k=>[p.c+k,p.r,p.tab]);
   if(p.type==='res'||p.type==='cap') return [p.a,p.b];
   if(p.type==='diode'||p.type==='led') return [p.an,p.ka];
   if(p.type==='elec') return [p.pos,p.neg];
@@ -357,8 +399,8 @@ function holesOf(p){
   return wireEnds(p).filter(Array.isArray);
 }
 function tagPos(p){
-  if(['to92','to126','to220','pot'].includes(p.type)){const q=hp([p.c,p.r]);return {x:q.x,y:isTop(p.r)?q.y-23:q.y+25}}
-  if(p.type==='dip'){return {x:(cx(p.c)+cx(p.c+p.n/2-1))/2,y:ROW.f+24}}
+  if(['to92','to126','to220','pot'].includes(p.type)){const q=hp([p.c,p.r,p.tab]);return {x:q.x,y:isTop(p.r)?q.y-23:q.y+25}}
+  if(p.type==='dip'){return {x:(cx(p.c)+cx(p.c+p.n/2-1))/2,y:ROW.f+24+dyB(p.tab)}}
   const h=holesOf(p);const a=hp(h[0]),b=hp(h[1]);const top=isTop(h[0][1]);
   const o=(RSIZE[String(p.w)]||[0,14])[1]/2+8;
   return {x:(a.x+b.x)/2,y:(top?Math.min(a.y,b.y)-o:Math.max(a.y,b.y)+o+1)};
@@ -371,7 +413,7 @@ function tagSVG(p){
 const TIPO={to92:'transistor · TO-92',to126:'transistor · TO-126',to220:'encapsulado TO-220',res:'resistencia',cap:'condensador',elec:'condensador electrolítico',diode:'diodo',led:'LED',dip:'circuito integrado',pot:'potenciómetro',wire:'cable'};
 const PATA={E:'emisor',B:'base',C:'colector',G:'compuerta',D:'drenador',S:'surtidor',A:'ánodo',K:'cátodo','+':'positivo','−':'negativo'};
 function patasDe(p){
-  if(['to92','to126','to220','pot'].includes(p.type)) return p.pins.map((L,i)=>[L,[p.c-1+i,p.r],p.nets[i]]);
+  if(['to92','to126','to220','pot'].includes(p.type)) return p.pins.map((L,i)=>[L,[p.c-1+i,p.r,p.tab],p.nets[i]]);
   if(p.type==='res'||p.type==='cap') return [['1',p.a,p.nets[0]],['2',p.b,p.nets[1]]];
   if(p.type==='diode'||p.type==='led') return [['A',p.an,p.nets.an],['K',p.ka,p.nets.ka]];
   if(p.type==='elec') return [['+',p.pos,p.nets.pos],['−',p.neg,p.nets.neg]];
@@ -397,7 +439,7 @@ function seleccionar(p,pt){
   const st=STEPS[p.step-1],esCable=p.type==='wire';
   const filas=patasDe(p).map(([L,h,n])=>`<tr><td>${esCable?L:`${L}${PATA[L]?` <span class="note">${PATA[L]}</span>`:''}`}</td><td class="h">${hn(h)}</td><td>${nn(n)||'—'}</td>${esCable?'':`<td>${unidas(p,n)}</td>`}</tr>`).join('');
   ficha.innerHTML=`<div class="ficha-h"><b>${p.ref||'Cable'}</b><span>${esCable?(CNAME[p.color]||''):(p.val||p.ohm||'')}</span><span class="pill">${TIPO[p.type]||p.type}</span><button class="x" type="button" aria-label="Cerrar">×</button></div>
-    ${p.info?`<p>${p.info}</p>`:''}
+    ${p.info?`<p>${p.info}</p>`:''}${p.type==='led'?`<p class="note">LED ${LEDN[p.color]||p.color||''} de ${p.d==3?3:5} mm${p.vf?` · V<sub>F</sub> ≈ ${p.vf}`:''}${p.i?` · I ≈ ${p.i}`:''}. Pata larga = ánodo; lado plano = cátodo.</p>`:''}${p.type==='cap'&&p.code?`<p class="note">Código ${p.code} = ${codigoCap(p.code)}: dos cifras × 10 elevado a la tercera, en pF. Sin polaridad.</p>`:''}${p.type==='elec'?`<p class="note">Electrolítico${p.val?' de '+p.val:''}${p.v?', '+p.v:''}. La franja con «−» marca el negativo; la pata larga es la positiva. Al revés se daña.</p>`:''}
     <div class="tw"><table><tr><th>Pata</th><th>Hueco</th><th>Nodo</th>${esCable?'':'<th>Unida a</th>'}</tr>${filas}</table></div>
     <div class="pie"><span>Paso ${p.step}: ${st?st.t:''}</span>${p.step!==cur?'<button class="ir" type="button">Ir al paso</button>':''}</div>`;
   ficha.querySelector('.x').addEventListener('click',cerrarFicha);
@@ -417,8 +459,8 @@ function cerrarFicha(){
   selP=null;ficha.hidden=true;selL.innerHTML='';
   PARTS.forEach(q=>q.el&&q.el.classList.remove('sel'));
 }
-svg.innerHTML=`<defs><filter id="sh" x="-30%" y="-40%" width="160%" height="180%"><feDropShadow dx=".8" dy="1.5" stdDeviation="1" flood-opacity=".33"/></filter></defs>`
- +boardSVG()+supplySVG()+`<g id="L1"></g><g id="L2"></g><g id="L3"></g><g id="flowL"></g>`+decorSVG()+`<g id="rings"></g><g id="selL"></g><g id="tags"></g>`;
+svg.innerHTML=`<defs><filter id="sh" x="-30%" y="-40%" width="160%" height="180%"><feDropShadow dx=".8" dy="1.5" stdDeviation="1" flood-opacity=".33"/></filter><filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="5"/></filter></defs>`
+ +Array.from({length:NB},(_,i)=>boardSVG(i+1)).join('')+supplySVG()+`<g id="L1"></g><g id="L2"></g><g id="L3"></g><g id="flowL"></g>`+decorSVG()+`<g id="rings"></g><g id="selL"></g><g id="tags"></g>`;
 const LAY={1:svg.querySelector('#L1'),2:svg.querySelector('#L2'),3:svg.querySelector('#L3')};
 const tagsL=svg.querySelector('#tags'),ringsL=svg.querySelector('#rings'),flowL=svg.querySelector('#flowL'),selL=svg.querySelector('#selL');
 for(const p of PARTS){
@@ -439,8 +481,9 @@ document.getElementById('legend').innerHTML=(CONFIG.leyenda||[]).map(([c,t])=>`<
 function pinoutSVG(spec){
   const [kind,order,back]=spec;
   if(kind==='diode') return `<svg viewBox="0 0 120 70" aria-hidden="true"><line x1="6" y1="32" x2="114" y2="32" stroke="#8f959c" stroke-width="3"/><rect x="34" y="20" width="52" height="24" rx="5" fill="#25262a"/><rect x="73" y="20" width="7" height="24" fill="#c9ced4"/><text class="ink" x="16" y="62" text-anchor="middle" font-size="11">A</text><text class="ink" x="104" y="62" text-anchor="middle" font-size="11">K</text></svg>`;
-  if(kind==='led') return `<svg viewBox="0 0 120 112" aria-hidden="true"><line x1="48" y1="60" x2="48" y2="104" stroke="#8f959c" stroke-width="3"/><line x1="72" y1="60" x2="72" y2="94" stroke="#8f959c" stroke-width="3"/><path d="M38 62 L38 30 A22 22 0 0 1 82 30 L82 62 Z" fill="#e0262f" fill-opacity=".85"/><line x1="82" y1="34" x2="82" y2="62" stroke="#fff" stroke-width="2"/><text class="ink" x="36" y="110" text-anchor="middle" font-size="11">A (larga)</text><text class="ink" x="90" y="104" text-anchor="middle" font-size="11">K</text></svg>`;
-  if(kind==='elec') return `<svg viewBox="0 0 120 112" aria-hidden="true"><line x1="48" y1="70" x2="48" y2="104" stroke="#8f959c" stroke-width="3"/><line x1="72" y1="70" x2="72" y2="94" stroke="#8f959c" stroke-width="3"/><rect x="34" y="6" width="52" height="64" rx="6" fill="#1f3f8a"/><rect x="70" y="6" width="16" height="64" fill="#c9d3e6"/><text x="78" y="42" text-anchor="middle" font-size="14" font-weight="700" fill="#1f3f8a">−</text><text class="ink" x="40" y="110" text-anchor="middle" font-size="11">+ (larga)</text><text class="ink" x="82" y="104" text-anchor="middle" font-size="11">−</text></svg>`;
+  if(kind==='led'){const col=LEDC[order]||LEDC.red;return `<svg viewBox="0 0 120 120" aria-hidden="true"><line x1="50" y1="66" x2="50" y2="112" stroke="#8f959c" stroke-width="3"/><line x1="70" y1="66" x2="70" y2="100" stroke="#8f959c" stroke-width="3"/><path d="M36 68 L36 30 A24 24 0 0 1 84 30 L84 68 Z" fill="${col}" fill-opacity=".7"/><rect x="33" y="64" width="54" height="6" rx="1" fill="${col}"/><line x1="84" y1="28" x2="84" y2="70" stroke="var(--surface-2)" stroke-width="3"/><rect x="45" y="44" width="8" height="20" fill="#8f959c"/><path d="M63 34 L76 34 L76 64 L66 64 Z" fill="#6f747b"/><text class="ink" x="26" y="100" text-anchor="middle" font-size="10">A +</text><text class="ink" x="26" y="112" text-anchor="middle" font-size="9">larga</text><text class="ink" x="94" y="100" text-anchor="middle" font-size="10">K −</text><text class="ink" x="96" y="80" text-anchor="middle" font-size="8.5">plano</text></svg>`}
+  if(kind==='elec') return `<svg viewBox="0 0 120 120" aria-hidden="true"><line x1="50" y1="76" x2="50" y2="114" stroke="#8f959c" stroke-width="3"/><line x1="70" y1="76" x2="70" y2="102" stroke="#8f959c" stroke-width="3"/><rect x="34" y="6" width="52" height="70" rx="6" fill="#1c3f86"/><rect x="68" y="6" width="18" height="70" rx="3" fill="#cfd8ea"/><text x="77" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#1c3f86">−</text><text x="77" y="44" text-anchor="middle" font-size="13" font-weight="700" fill="#1c3f86">−</text><text x="77" y="62" text-anchor="middle" font-size="13" font-weight="700" fill="#1c3f86">−</text><text x="51" y="36" text-anchor="middle" font-size="8" fill="#dfe6f5">${order||''}</text><text class="ink" x="26" y="104" text-anchor="middle" font-size="10">+ larga</text><text class="ink" x="94" y="104" text-anchor="middle" font-size="10">− corta</text></svg>`;
+  if(kind==='cap') return `<svg viewBox="0 0 120 112" aria-hidden="true"><line x1="50" y1="70" x2="50" y2="106" stroke="#8f959c" stroke-width="3"/><line x1="70" y1="70" x2="70" y2="106" stroke="#8f959c" stroke-width="3"/><circle cx="60" cy="40" r="32" fill="#c8641c"/><circle cx="60" cy="40" r="27" fill="#df8a3a"/><text x="60" y="47" text-anchor="middle" font-size="20" font-weight="700" fill="#3b1f06">${order||'104'}</text></svg>`;
   if(kind==='dip'){const n=order||8,h=n/2;let s=`<svg viewBox="0 0 120 112" aria-hidden="true"><rect x="22" y="30" width="76" height="50" rx="3" fill="#1d1e21"/><path d="M22 47 A8 8 0 0 1 22 63" fill="#3a3c41"/><circle cx="31" cy="71" r="3" fill="#55585f"/>`;
     for(let i=0;i<h;i++){const x=28+i*(64/(h-1||1));s+=`<text class="ink" x="${x}" y="98" text-anchor="middle" font-size="9">${i+1}</text><text class="ink" x="${x}" y="22" text-anchor="middle" font-size="9">${n-i}</text>`}
     return s+`</svg>`}
@@ -457,12 +500,12 @@ function pinoutSVG(spec){
 }
 function connRow(p){
   const sw=`<span class="sw" style="background:${C[p.color]||p.color||'#999'}"></span>`;
-  if(['to92','to126','to220','pot'].includes(p.type)) return [`<b>${p.ref}</b> ${p.val||''}`,p.pins.map((L,i)=>`${L} ${p.c-1+i}${p.r}`).join(' · '),p.nets.map(nn).join(', ')];
+  if(['to92','to126','to220','pot'].includes(p.type)) return [`<b>${p.ref}</b> ${p.val||''}`,p.pins.map((L,i)=>`${L} ${hn([p.c-1+i,p.r,p.tab])}`).join(' · '),p.nets.map(nn).join(', ')];
   if(p.type==='res') return [`<b>${p.ref}</b> ${p.ohm||''}<br><span class="note">${p.bands.map(b=>BANDN[b]).join(', ')}</span>`,`${hn(p.a)} – ${hn(p.b)}`,`${nn(p.nets[0])} – ${nn(p.nets[1])}`];
-  if(p.type==='cap') return [`<b>${p.ref}</b> ${p.val||''}`,`${hn(p.a)} – ${hn(p.b)}`,`${nn(p.nets[0])} – ${nn(p.nets[1])}`];
+  if(p.type==='cap') return [`<b>${p.ref}</b> ${p.val||codigoCap(p.code)}${p.code?` <span class="note">(${p.code})</span>`:''}`,`${hn(p.a)} – ${hn(p.b)}`,`${nn(p.nets[0])} – ${nn(p.nets[1])}`];
   if(p.type==='diode'||p.type==='led') return [`<b>${p.ref}</b> ${p.val||''}`,`A ${hn(p.an)} · K ${hn(p.ka)}`,`${nn(p.nets.an)} → ${nn(p.nets.ka)}`];
   if(p.type==='elec') return [`<b>${p.ref}</b> ${p.val||''}`,`+ ${hn(p.pos)} · − ${hn(p.neg)}`,`${nn(p.nets.pos)} / ${nn(p.nets.neg)}`];
-  if(p.type==='dip') return [`<b>${p.ref}</b> ${p.val||''}`,`pata 1 en ${p.c}f · pata ${p.n} en ${p.c}e`,p.nets.map((n,i)=>`${i+1}:${nn(n)}`).join(' ')];
+  if(p.type==='dip') return [`<b>${p.ref}</b> ${p.val||''}`,`pata 1 en ${hn(dipHole(p,1))} · pata ${p.n} en ${hn(dipHole(p,p.n))}`,p.nets.map((n,i)=>`${i+1}:${nn(n)}`).join(' ')];
   return [`${sw}cable ${CNAME[p.color]||''}`,wireEnds(p).map(hn).join(' – '),nn(p.net)];
 }
 const card=document.getElementById('card');
@@ -478,20 +521,26 @@ function renderCard(){
   if(s.test&&T) h+=testHTML();
   if(s.why) h+=`<div class="why"><span class="kicker">Para la sustentación</span><p>${s.why}</p></div>`;
   card.innerHTML=h;
-  if(s.test&&T){card.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>setTest(b.dataset.s)));updateTest()}
+  if(s.test&&T){card.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>setTest(b.dataset.s)));
+    const fb=card.querySelector('.flujo-btn');
+    if(fb) fb.addEventListener('click',()=>{verFlujo=!verFlujo;fb.setAttribute('aria-pressed',String(verFlujo));fb.textContent=`⚡ Corriente: ${verFlujo?'visible':'oculta'}`;dibujarFlujo()});
+    updateTest()}
 }
 function testHTML(){
   return `<div class="seg" role="group" aria-label="Estados de prueba">${T.estados.map(e=>`<button type="button" data-s="${e.id}">${e.boton}</button>`).join('')}</div>
    <div class="reads">${(T.lecturas||[]).map(([k,id])=>`<div class="read"><div class="k">${k}</div><div class="v" data-r="${id}"></div></div>`).join('')}</div>
+   ${T.estados.some(e=>e.flujo&&e.flujo.length)?`<button type="button" class="flujo-btn" aria-pressed="${verFlujo}">⚡ Corriente: ${verFlujo?'visible':'oculta'}</button>`:''}
    <div class="states" id="r-st"></div><p id="r-txt"></p>${T.nota?`<p class="note">${T.nota}</p>`:''}${T.alerta?`<div class="alert">${T.alerta}</div>`:''}`;
 }
-function setTest(id){
+let verFlujo=true,flujoActual=[];
+function dibujarFlujo(){flowL.innerHTML=verFlujo?flujoActual.map(f=>`<path class="flow" d="M${f.map(hp).map(q=>q.x+' '+q.y).join(' L')}"/>`).join(''):''}
+function setTest(id,visual=true){   // visual=false: solo deja los interruptores en reposo (pasos de montaje)
   if(!T) return;
   const E=T.estados.find(e=>e.id===id)||T.estados[0];testState=E.id;
   // los cables "interruptor" (sw:true) vuelven a su destino de reposo salvo que el estado los mueva
   for(const p of PARTS) if(p.sw){p.pts=[p.pts[0],(E.sw&&E.sw[p.id])||p.swOff];p.el.innerHTML=renderPart(p)}
-  PARTS.forEach(p=>p.el.classList.toggle('active',(E.activos||[]).includes(p.id)));
-  flowL.innerHTML=(E.flujo||[]).map(f=>`<path class="flow" d="M${f.map(hp).map(q=>q.x+' '+q.y).join(' L')}"/>`).join('');
+  PARTS.forEach(p=>{p.el.classList.toggle('active',visual&&(E.activos||[]).includes(p.id));p.el.classList.toggle('lit',visual&&(E.luces||[]).includes(p.id))});
+  flujoActual=visual?(E.flujo||[]):[];dibujarFlujo();
   const st=svg.querySelector('#sal-txt');if(st&&CONFIG.salidas) st.textContent=E.salida||CONFIG.salidas.centro;
   updateTest();
 }
@@ -510,7 +559,7 @@ list.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{stop()
 function go(n,animate=true){
   cerrarFicha();
   const prev=cur;cur=Math.max(1,Math.min(STEPS.length,n));
-  if(T&&(cur!==prev||!STEPS[cur-1].test||testState===null)) setTest(T.estados[0].id);
+  if(T&&(cur!==prev||!STEPS[cur-1].test||testState===null)) setTest(T.estados[0].id,!!STEPS[cur-1].test);
   svg.classList.toggle('testing',!!STEPS[cur-1].test);
   svg.classList.toggle('step1',cur===1);
   const now=[];

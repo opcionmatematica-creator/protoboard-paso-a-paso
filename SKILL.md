@@ -7,7 +7,11 @@ description: Convierte un esquemático (KiCad .kicad_sch, PDF, imagen, foto de u
 
 Convierte un esquema en una página HTML que anima el montaje pieza por pieza sobre una protoboard dibujada a escala. Cada paso indica en qué huecos va cada pata. El valor de la página está en que sea **correcta**: un estudiante la seguirá literalmente, así que una pata en el hueco equivocado es peor que no tener animación. Por eso el flujo termina siempre con una verificación automática de redes.
 
-Todo el dibujo y la animación ya están resueltos en `assets/plantilla.html`. Tu trabajo es entender el circuito, decidir la disposición y escribir solo los **datos** (CONFIG, PARTS, STEPS). `assets/ejemplo_puente_h.html` es un ejemplo completo y verificado: un puente H con transistores de potencia, drivers, entradas y prueba de giro. Míralo antes de escribir el primero.
+Todo el dibujo y la animación ya están resueltos en `assets/plantilla.html`. Tu trabajo es entender el circuito, decidir la disposición y escribir solo los **datos** (CONFIG, PARTS, STEPS). En `assets/` hay tres ejemplos completos y verificados; mira el más parecido antes de escribir el primero:
+
+- `ejemplo_puente_h.html`: transistores de potencia, drivers, entradas y prueba de giro;
+- `ejemplo_leds.html`: LEDs con resistencia y un interruptor;
+- `ejemplo_555_dos_protoboards.html`: integrado DIP, condensadores y un circuito repartido en dos protoboards.
 
 ## Requisitos
 
@@ -50,6 +54,9 @@ Lee `references/disposicion.md` antes de colocar nada: geometría, tamaños de c
 - **Que la protoboard se parezca al esquema**: el mismo orden izquierda/derecha y arriba/abajo, y las entradas del mismo lado. El estudiante tiene que poder señalar una pieza en el esquema y encontrarla en la protoboard. Si la disposición se aparta del dibujo, la percibirá como un error aunque eléctricamente sea idéntica.
 - Cada columna de cinco huecos es un nodo. Planifica con una tabla columna por columna (qué red es y qué fila usa cada pata) antes de escribir datos.
 - Un hueco, una pata. Los cables largos van por filas distintas para no cruzarse.
+- **Cables siempre rectos**: un solo tramo horizontal o vertical. Las esquinas las hacen las columnas de la protoboard (un cable llega a una columna y otro sale desde otro hueco de ella). El verificador rechaza curvas y diagonales.
+- **¿Una o dos protoboards?** Si el circuito no cabe con holgura (más de unas 45 columnas en una de 400 puntos, filas tan llenas que los cuerpos se tocan, o bloques que conviene separar), usa `tableros:2`. Divide por bloques funcionales, une GND y la alimentación entre las dos y pasa el menor número de señales posible.
+- **LEDs** siempre con su resistencia en serie, calculada; patas en columnas contiguas y polaridad explicada. **Electrolíticos** con el hueco del positivo dicho en el texto. **Cerámicos** con su código (`104`).
 - Código de colores constante: rojo para alimentación, negro (o verde) para tierra, otros colores para señal, y el mismo color para la misma función.
 
 ### 4. Escribe la página
@@ -63,7 +70,13 @@ Lee `references/disposicion.md` antes de colocar nada: geometría, tamaños de c
    - cuando ayuda, un **pinout** (`pin`);
    - una nota **«Para la sustentación»** (`why`) con el porqué eléctrico y, si existen, los cálculos del documento del curso con su notación.
    Además, dale a **cada pieza y cada cable** un campo `info` con una o dos frases sobre qué es y qué hace en este circuito. Al tocar una pieza en la protoboard se abre una ficha con ese texto, sus patas, huecos y nodos, y las piezas unidas a cada pata. Así el estudiante puede señalar cualquier componente y saber cuál es.
-5. Si el circuito tiene entradas o estados (puente H, compuertas, semáforo), añade el paso final de **prueba** (`test:true` y `CONFIG.prueba`). Ahí se mueven los cables interruptor, se resaltan las piezas que conducen y se anima el camino de la corriente. Usa valores calculados o simulados y di de dónde salen. No inventes lecturas.
+5. Si el circuito tiene entradas o estados (puente H, compuertas, semáforo, LEDs que encienden), añade el paso final de **prueba** (`test:true` y `CONFIG.prueba`). Ahí:
+   - se mueven los cables interruptor;
+   - se resaltan las piezas que conducen;
+   - se encienden los LEDs (`luces`);
+   - se anima el camino de la corriente, que el estudiante muestra u oculta con el botón «⚡ Corriente».
+
+   Usa valores calculados o simulados y di de dónde salen. No inventes lecturas.
 
 ### 5. Verifica (obligatorio)
 
@@ -99,7 +112,7 @@ En pocas líneas:
 ## Archivos
 
 - `assets/plantilla.html`: motor de dibujo y animación. Copiar y rellenar.
-- `assets/ejemplo_puente_h.html`: ejemplo completo y verificado.
+- `assets/ejemplo_puente_h.html`, `ejemplo_leds.html` y `ejemplo_555_dos_protoboards.html`: ejemplos verificados.
 - `scripts/verificar_protoboard.cjs`: verificación de huecos y redes.
 - `scripts/netlist_a_json.py`: de KiCad a `redes.json`.
 - `scripts/comprobar_herramientas.sh`: comprueba los requisitos.

@@ -3,4 +3,4 @@ __pycache__/
 *.pyc
 .playwright-mcp/
 *-workspace/
-redes.json
+/redes.json

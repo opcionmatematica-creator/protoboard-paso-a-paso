@@ -2,7 +2,19 @@
 
 Skill de Claude Code que convierte un esquemático en una **animación HTML paso a paso de cómo montarlo en protoboard**. La animación indica los huecos exactos de cada pata (`4c`, `33h`…), la orientación de cada transistor, el código de colores de los cables y una nota «Para la sustentación» en cada paso. Al tocar cualquier pieza o cable se abre una ficha que dice qué es, qué hace, en qué huecos y nodos están sus patas y con qué otras piezas está unida. La animación termina con una prueba interactiva que muestra el camino de la corriente. Antes de entregar, un script comprueba que la protoboard tiene exactamente las mismas redes que el esquema.
 
-Abre `assets/ejemplo_puente_h.html` en el navegador para ver un ejemplo completo: el puente H con A715/D882 del anexo de una práctica de Electrónica Análoga.
+**Novedades:**
+
+- **Cables siempre rectos**, horizontales o verticales. El verificador rechaza curvas y diagonales.
+- **Una o dos protoboards**: si el circuito no cabe en una, se reparte en dos, unidas por sus rieles.
+- **LEDs realistas**: lado plano, yunque y poste, 3 o 5 mm, color real. Se encienden en la prueba y su ficha muestra V<sub>F</sub> e I.
+- **Condensadores realistas**: cerámico con su código (104 = 100 nF), poliéster y multicapa; electrolítico visto desde arriba, con franja «−» y tapa de aluminio.
+- **Botón «⚡ Corriente»** para mostrar u ocultar la animación de la corriente.
+
+Abre los ejemplos de `assets/` en el navegador:
+
+- `ejemplo_puente_h.html`: el puente H con A715/D882 del anexo de una práctica de Electrónica Análoga;
+- `ejemplo_leds.html`: LEDs con resistencia e interruptor;
+- `ejemplo_555_dos_protoboards.html`: NE555 intermitente repartido en dos protoboards.
 
 ## Requisitos
 
@@ -47,11 +59,12 @@ Reinicia Claude Code. La skill se activa sola cuando pides algo como «hazme la 
 
 - Transistores en TO-92, TO-126 y TO-220 (también reguladores y MOSFET)
 - Resistencias de ¼, ½, 1 y 2 W con su código de colores
-- Diodos y LED
-- Condensadores cerámicos y electrolíticos
+- Diodos y LED (3 y 5 mm, varios colores, encendidos en la prueba)
+- Condensadores cerámicos (con código), de poliéster, multicapa y electrolíticos
 - Potenciómetros
 - Circuitos integrados DIP de cualquier número de patas
-- Cables rectos, curvos e «interruptor» para las entradas
+- Cables rectos (horizontales o verticales) e «interruptor» para las entradas
+- Una o dos protoboards
 - Fuente de laboratorio y salidas a cargas externas, como un motor
 
 ## Estructura
@@ -59,7 +72,7 @@ Reinicia Claude Code. La skill se activa sola cuando pides algo como «hazme la 
 ```
 SKILL.md                          instrucciones para Claude
 assets/plantilla.html             motor de dibujo y animación (se copia y se rellenan los datos)
-assets/ejemplo_puente_h.html      ejemplo completo y verificado
+assets/ejemplo_*.html             ejemplos verificados (puente H, LEDs, 555 en dos protoboards)
 scripts/verificar_protoboard.cjs  verificación de huecos y redes contra el esquema
 scripts/netlist_a_json.py         KiCad → redes.json
 scripts/comprobar_herramientas.sh comprueba los requisitos

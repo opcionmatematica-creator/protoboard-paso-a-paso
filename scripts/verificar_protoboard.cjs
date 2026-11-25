@@ -7,6 +7,8 @@
 
  Sin redes.json comprueba la coherencia interna:
    - ningún hueco tiene dos patas o cables,
+   - todos los cables son rectos: un solo tramo horizontal o vertical (sin curvas ni diagonales),
+   - las piezas caen en una protoboard que existe (CONFIG.tableros),
    - cada conexión a un riel cae en un hueco que existe,
    - todas las patas con el mismo nombre de red quedan en el mismo nodo de la protoboard
      y redes con nombres distintos quedan en nodos distintos.
@@ -33,11 +35,17 @@ const blk = src.split('// DATOS-INICIO')[1].split('// DATOS-FIN')[0].replace(/^[
 const { CONFIG, PARTS, STEPS } = new Function(blk + ';return {CONFIG,PARTS,STEPS};')();
 const g0 = CONFIG.huecoRiel0 ?? 4;
 const railHole = c => (((c - g0) % 6) + 6) % 6 !== 0;
-const NC = CONFIG.columnas || 40;
+const NC = CONFIG.columnas || 40, NB = CONFIG.tableros || 1;
+// misma geometría que la plantilla, para comprobar que los cables son rectos
+const P = 18, BX = 110, OFF = 372, SAL_Y = 44, JACK_X = 70;
+const ROW = { 'T-': 108, 'T+': 126, a: 162, b: 180, c: 198, d: 216, e: 234, f: 288, g: 306, h: 324, i: 342, j: 360, 'B-': 396, 'B+': 414 };
+const cx = c => BX + 24 + (c - 1) * P, dyB = b => ((b || 1) - 1) * OFF;
+const px = h => Array.isArray(h) ? { x: cx(h[0]), y: ROW[h[1]] + dyB(h[2]) } : h.sal !== undefined ? { x: cx(h.sal), y: h.y ?? SAL_Y } : h.fuente !== undefined ? { x: JACK_X, y: ROW[h.fuente] + dyB(h.tab) } : h;
+const nombreH = h => Array.isArray(h) ? (NB > 1 ? `P${h[2] || 1}·` : '') + h[0] + h[1] : JSON.stringify(h);
 const errs = [], avisos = [];
 
 const isHole = h => Array.isArray(h);
-const node = h => h[1].length > 1 ? 'RIEL' + h[1] : ('abcde'.includes(h[1]) ? 'T' : 'B') + h[0];
+const node = h => (h[1].length > 1 ? 'RIEL' + h[1] : ('abcde'.includes(h[1]) ? 'T' : 'B') + h[0]) + (NB > 1 ? '@P' + (h[2] || 1) : '');
 const par = {}; const f = x => { par[x] ??= x; return par[x] === x ? x : (par[x] = f(par[x])); };
 const unir = (a, b) => { par[f(a)] = f(b); };
 const usados = {};
@@ -46,19 +54,21 @@ function usar(h, quien) {
   const [c, r] = h;
   if (!(r in { a: 1, b: 1, c: 1, d: 1, e: 1, f: 1, g: 1, h: 1, i: 1, j: 1, 'T-': 1, 'T+': 1, 'B-': 1, 'B+': 1 })) errs.push(`${quien}: fila desconocida ${r}`);
   if (c < 1 || c > NC) errs.push(`${quien}: columna ${c} fuera de la protoboard (1–${NC})`);
+  const b = h[2] || 1;
+  if (b < 1 || b > NB) errs.push(`${quien}: protoboard ${b} no existe (CONFIG.tableros = ${NB})`);
   if (r.length > 1 && !railHole(c)) errs.push(`${quien}: el riel no tiene hueco en la columna ${c} (huecoRiel0=${g0})`);
-  const k = c + r;
+  const k = nombreH(h);
   if (usados[k]) errs.push(`hueco ${k} usado por ${usados[k]} y ${quien}`);
   usados[k] = quien;
 }
-const dipHole = (p, i) => { const h = p.n / 2; return i <= h ? [p.c + i - 1, 'f'] : [p.c + (p.n - i), 'e']; };
+const dipHole = (p, i) => { const h = p.n / 2; return i <= h ? [p.c + i - 1, 'f', p.tab] : [p.c + (p.n - i), 'e', p.tab]; };
 
 // patas de cada pieza: {h, keys:[...], net, grupo (para piezas sin orden)}
 function patas(p) {
   const L = (h, keys, net) => ({ h, keys, net, ref: p.ref });
   switch (p.type) {
     case 'to92': case 'to126': case 'to220': case 'pot':
-      return p.pins.map((n, i) => L([p.c - 1 + i, p.r], [p.ref + ':' + n].concat(p.kpins ? [p.ref + ':' + p.kpins[i]] : []), p.nets[i]));
+      return p.pins.map((n, i) => L([p.c - 1 + i, p.r, p.tab], [p.ref + ':' + n].concat(p.kpins ? [p.ref + ':' + p.kpins[i]] : []), p.nets[i]));
     case 'res': case 'cap': return [L(p.a, [], p.nets[0]), L(p.b, [], p.nets[1])].map(x => (x.sinOrden = true, x));
     case 'diode': case 'led': return [L(p.an, [p.ref + ':A', p.ref + ':2'], p.nets.an), L(p.ka, [p.ref + ':K', p.ref + ':1'], p.nets.ka)];
     case 'elec': return [L(p.pos, [p.ref + ':+', p.ref + ':1'], p.nets.pos), L(p.neg, [p.ref + ':-', p.ref + ':2'], p.nets.neg)];
@@ -73,6 +83,18 @@ for (const p of PARTS) {
   if (!STEPS[p.step - 1]) errs.push(`${p.id}: paso ${p.step} no existe`);
   if (p.type === 'wire') {
     const e = (p.curve ? [p.curve.from, p.curve.to] : p.pts);
+    // cables rectos: un tramo, horizontal o vertical (también en cada posición de un interruptor)
+    if (p.curve) errs.push(`${p.id}: cable curvo; los cables deben ser rectos (un tramo horizontal o vertical)`);
+    else if (e.length !== 2) errs.push(`${p.id}: cable con ${e.length} puntos; usa un solo tramo recto (dos cables que lleguen a la misma columna hacen la esquina)`);
+    else {
+      const [A, B] = e.map(px);
+      if (Math.abs(A.x - B.x) > 0.5 && Math.abs(A.y - B.y) > 0.5) errs.push(`${p.id}: cable en diagonal de ${e.map(nombreH).join(' a ')}; debe ir en una misma fila o una misma columna`);
+    }
+    if (p.sw) for (const [, dest] of (CONFIG.prueba?.estados || []).flatMap(E => Object.entries(E.sw || {}).filter(([k]) => k === p.id))) {
+      const [A, B] = [e[0], dest].map(px);
+      if (Math.abs(A.x - B.x) > 0.5 && Math.abs(A.y - B.y) > 0.5) errs.push(`${p.id}: en la prueba el interruptor va en diagonal hasta ${nombreH(dest)}`);
+      usar(dest, p.id + ' (prueba)');
+    }
     e.forEach(h => usar(h, p.id));
     if (p.sw) continue;                       // interruptor: no cuenta como conexión fija
     const hs = e.filter(isHole);

@@ -35,9 +35,38 @@ Orden de las patas **de izquierda a derecha, con las patas hacia abajo y la cara
 ## Componentes de dos patas
 
 - **Diodo**: la franja marca el cátodo (K).
-- **LED**: la pata larga es el ánodo (A); el lado plano de la cápsula y la pata corta son el cátodo (K).
-- **Electrolítico**: la franja con signos «−» marca el negativo; la pata larga es la positiva.
-- **Cerámico, poliéster, resistencia**: sin polaridad.
+- **Electrolítico**: la franja con signos «−» marca el negativo; la pata larga es la positiva. El voltaje impreso es el máximo: usa uno al menos 1,5 veces mayor que el del circuito.
+- **Cerámico, poliéster, multicapa, resistencia**: sin polaridad.
+
+## LED
+
+- **Polaridad**: la pata larga es el ánodo (A, +). El lado plano del borde y la pata corta son el cátodo (K, −). Dentro de la cápsula, la pieza grande (el yunque) es el cátodo. Con el multímetro en prueba de diodo, el LED enciende débilmente cuando la punta roja está en el ánodo.
+- **Tensión directa típica (V<sub>F</sub>) a 10–20 mA**:
+
+| Color | V<sub>F</sub> |
+|---|---|
+| Rojo | 1,8 – 2,0 V |
+| Naranja y amarillo | 2,0 – 2,2 V |
+| Verde clásico | 2,0 – 2,2 V |
+| Verde brillante, azul, blanco, violeta | 2,8 – 3,4 V |
+| Infrarrojo | 1,2 – 1,5 V |
+
+- **Resistencia en serie**: R = (V<sub>fuente</sub> − V<sub>F</sub>) / I. Ejemplos con un LED rojo a 10 mA: con 5 V, 330 Ω; con 9 V, 680 Ω; con 12 V, 1 kΩ. Potencia en la resistencia: P = I²·R, casi siempre menos de ¼ W.
+- **Corriente máxima** de un LED de 5 mm común: unos 20–30 mA. Para indicadores basta con 5–10 mA.
+- Al revés no conduce. Aguanta unos 5 V en inversa; por encima puede dañarse.
+
+## Código de los condensadores cerámicos
+
+Tres cifras: las dos primeras son el número y la tercera es el número de ceros, en picofaradios.
+
+- 101 = 100 pF
+- 102 = 1 nF
+- 103 = 10 nF
+- 104 = 100 nF
+- 105 = 1 µF
+- 220 = 22 pF
+
+Si hay una letra detrás, es la tolerancia: J = ±5 %, K = ±10 %, M = ±20 %.
 
 ## Circuitos integrados DIP (muesca a la izquierda, pata 1 abajo a la izquierda)
 
