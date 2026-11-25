@@ -32,15 +32,14 @@ if (!src.includes('// DATOS-INICIO') || !src.includes('// DATOS-FIN')) {
   console.error('El HTML no tiene los marcadores // DATOS-INICIO y // DATOS-FIN de la plantilla.'); process.exit(2);
 }
 const blk = src.split('// DATOS-INICIO')[1].split('// DATOS-FIN')[0].replace(/^[^\n]*\n/, '');
-const { CONFIG, PARTS, STEPS } = new Function(blk + ';return {CONFIG,PARTS,STEPS};')();
+if (!src.includes('// NUCLEO-INICIO')) {
+  console.error('El HTML usa un motor antiguo (sin // NUCLEO-INICIO). Actualízalo con: node scripts/construir.cjs --actualizar ' + html); process.exit(2);
+}
+// geometría y patas: se toman del propio HTML (bloque NUCLEO de la plantilla), así nunca se desfasan
+const nucleo = src.split('// NUCLEO-INICIO')[1].split('// NUCLEO-FIN')[0].replace(/^[^\n]*\n/, '');
+const { CONFIG, PARTS, STEPS, railHole, NC, NB, hp: px, dipHole, moduloPines, FILA_IDX } =
+  new Function(blk + nucleo + ';return {CONFIG,PARTS,STEPS,railHole,NC,NB,hp,dipHole,moduloPines,FILA_IDX};')();
 const g0 = CONFIG.huecoRiel0 ?? 4;
-const railHole = c => (((c - g0) % 6) + 6) % 6 !== 0;
-const NC = CONFIG.columnas || 40, NB = CONFIG.tableros || 1;
-// misma geometría que la plantilla, para comprobar que los cables son rectos
-const P = 18, BX = 110, OFF = 372, SAL_Y = 44, JACK_X = 70;
-const ROW = { 'T-': 108, 'T+': 126, a: 162, b: 180, c: 198, d: 216, e: 234, f: 288, g: 306, h: 324, i: 342, j: 360, 'B-': 396, 'B+': 414 };
-const cx = c => BX + 24 + (c - 1) * P, dyB = b => ((b || 1) - 1) * OFF;
-const px = h => Array.isArray(h) ? { x: cx(h[0]), y: ROW[h[1]] + dyB(h[2]) } : h.sal !== undefined ? { x: cx(h.sal), y: h.y ?? SAL_Y } : h.fuente !== undefined ? { x: JACK_X, y: ROW[h.fuente] + dyB(h.tab) } : h;
 const nombreH = h => Array.isArray(h) ? (NB > 1 ? `P${h[2] || 1}·` : '') + h[0] + h[1] : JSON.stringify(h);
 const errs = [], avisos = [];
 
@@ -61,15 +60,6 @@ function usar(h, quien) {
   if (usados[k]) errs.push(`hueco ${k} usado por ${usados[k]} y ${quien}`);
   usados[k] = quien;
 }
-// placas de desarrollo: igual que en la plantilla
-function moduloPines(p) {
-  const d = p.dibujo, ccw = (d.usb === 'arriba') === (p.usbLado === 'izq');
-  const sup = ccw ? d.der.slice() : d.izq.slice().reverse(), inf = ccw ? d.izq.slice() : d.der.slice().reverse();
-  return sup.map((nm, i) => ({ name: nm, hole: [p.c + i, p.filas[0], p.tab] })).concat(inf.map((nm, i) => ({ name: nm, hole: [p.c + i, p.filas[1], p.tab] })));
-}
-const FILA_IDX = { a: 0, b: 1, c: 2, d: 3, e: 4, f: 7, g: 8, h: 9, i: 10, j: 11 };   // posición en décimas de pulgada
-const dipHole = (p, i) => { const h = p.n / 2; return i <= h ? [p.c + i - 1, 'f', p.tab] : [p.c + (p.n - i), 'e', p.tab]; };
-
 // patas de cada pieza: {h, keys:[...], net, grupo (para piezas sin orden)}
 function patas(p) {
   const L = (h, keys, net) => ({ h, keys, net, ref: p.ref });
@@ -120,6 +110,10 @@ for (const p of PARTS) {
     if (!p.filas || !(p.filas[0] in FILA_IDX) || !(p.filas[1] in FILA_IDX)) errs.push(`${p.id}: filas inválidas`);
     else if (p.separacion && FILA_IDX[p.filas[1]] - FILA_IDX[p.filas[0]] !== p.separacion)
       errs.push(`${p.id}: las filas ${p.filas[0]} y ${p.filas[1]} están a ${(FILA_IDX[p.filas[1]] - FILA_IDX[p.filas[0]]) / 10}" pero la placa tiene ${p.separacion / 10}" entre filas de pines`);
+    if (p.vista && !['realista', 'bloque'].includes(p.vista)) errs.push(`${p.id}: vista debe ser 'realista' o 'bloque'`);
+    for (const r of p.aspecto || []) if ([r.x, r.y, (r.x || 0) + (r.w || 0), (r.y || 0) + (r.h || 0)].some(v => typeof v !== 'number' || v < -0.01 || v > 1.01))
+      errs.push(`${p.id}: aspecto «${r.tipo}» se sale de la placa (x, y, w, h son fracciones entre 0 y 1)`);
+    if (!p.fuente) avisos.push(`${p.id}: sin «fuente»; cita de dónde salió el pinout y el aspecto de la placa`);
     for (const k of Object.keys(p.conex || {})) if (![...d.izq || [], ...d.der || []].includes(k)) errs.push(`${p.id}: conex usa el pin «${k}», que la placa no tiene`);
     // pines con el mismo nombre (dos GND, dos RST) están unidos dentro de la placa
     const porNombre = {};

@@ -35,7 +35,7 @@ Con dos protoboards, los textos muestran los huecos como `P2·16e`.
 ```js
 const CONFIG={
   titulo:'Puente H en protoboard',
-  kicker:'Práctica 5 · Taller IV · punto 4',   // texto pequeño sobre el título
+  kicker:'Laboratorio de electrónica · montaje 4',   // texto pequeño sobre el título
   sub:'Montaje paso a paso del …',             // subtítulo (admite HTML)
   columnas:40,           // columnas dibujadas: 30 si es media protoboard; hasta 63 en una de 830 puntos
   huecoRiel0:4,          // ajusta los huecos del riel (ver arriba)
@@ -47,6 +47,8 @@ const CONFIG={
   entradas:{paso:10, items:[{c:7,txt:'A'},{c:31,txt:'B'}]},  // o null; van debajo de la última protoboard
   leyenda:[['red','Rojo: alimentación'],['black','Negro: tierra'],[['blue','violet'],'Azul y violeta: …']],
   notaTitulo:'Cómo funciona',   // título de la nota de cada paso; en un curso, p. ej. 'Para la sustentación'
+  tituloCorto:'Puente H',        // nombre corto para la pestaña del navegador (opcional)
+  vistaPlacas:'realista',        // vista inicial de las placas: 'realista' o 'bloque'
   externos:{'VM:1':[1,'T+'],'VM:2':[1,'B-'],'M1:1':[4,'a']},   // pines del esquema sin pieza física
   prueba:{…},            // o null; ver «Prueba interactiva»
 };
@@ -122,12 +124,15 @@ const CONFIG={
 
 ### Placa de desarrollo: `modulo`
 
-Arduino Nano, Raspberry Pi Pico, ESP32 DevKit y similares, vistos desde arriba, a horcajadas sobre la canaleta. Todos los detalles, los pinouts listos para copiar y cómo investigar una placa nueva están en `references/microcontroladores.md`.
+Arduino Nano, Raspberry Pi Pico, ESP32 DevKit y similares, a horcajadas sobre la canaleta. Tienen dos vistas: **realista** (la placa vista desde arriba, con sus componentes) y **bloque** (todos los pines coloreados por función). El usuario cambia de vista con el botón «▣ Placa». Antes de escribirla hay que **investigar la placa**. Todos los campos, el procedimiento de investigación y los datos verificados de las placas comunes están en `references/microcontroladores.md`.
 
 ```js
 {id:'U1',step:2,type:'modulo',ref:'U1',val:'Arduino Nano',chip:'ATmega328P',color:'#1d5fa8',
- c:12, filas:['c','g'], separacion:6, usbLado:'der',
+ c:12, filas:['c','g'], separacion:6, usbLado:'der', usb:'mini', extension:{usb:.9,opuesto:.9},
  dibujo:{usb:'arriba', izq:['D13','3V3',…], der:['D12','D11',…]},   // tal como el diagrama oficial
+ aspecto:[{tipo:'chip',x:.3,y:.42,w:.4,h:.16,texto:'ATmega328P'}, …],   // vista realista, según la investigación
+ funciones:{D3:'PWM · INT1', …}, fuente:'docs.arduino.cc …',
+ vista:'realista',            // o 'bloque'; para todas las placas: CONFIG.vistaPlacas
  conex:{'D2':'D2','GND':'GND'}, info:'…'}
 ```
 

@@ -50,7 +50,22 @@ Revisa estos huecos del esquema:
 
 Para cada semiconductor, anota el encapsulado y el orden **físico** de las patas. La numeración del símbolo no siempre coincide con el orden físico. Consulta `references/pinouts.md`. Si no conoces con seguridad el pinout de una referencia, dilo en el paso correspondiente y pide confirmarlo con la hoja de datos o con el multímetro. No lo inventes.
 
-**Microcontroladores y placas de desarrollo** (Arduino Nano, ESP32, Raspberry Pi Pico, NodeMCU, ATmega328P, ATtiny85…): lee `references/microcontroladores.md`. Si la placa no está ahí o tienes dudas de la versión, **investígala** antes de dibujarla: busca en la web el pinout oficial visto desde arriba, el número de pines por lado, la separación entre filas en décimas de pulgada y el lado del USB. Cita la fuente en el informe. Las placas se dibujan con el tipo `modulo` y los microcontroladores DIP con `dip`. Las placas que no entran en una protoboard (Arduino Uno o Mega) quedan fuera y se conectan con cables.
+**Microcontroladores y placas de desarrollo** (Arduino Nano, ESP32, Raspberry Pi Pico, NodeMCU, ATmega328P, ATtiny85…): lee `references/microcontroladores.md` y **haz siempre una investigación en internet** antes de dibujar la placa. Busca la documentación del fabricante, el dibujo mecánico y fotos de la cara de arriba. Saca de ahí:
+
+- el pinout visto desde arriba;
+- la separación entre filas;
+- las medidas;
+- el tipo y el lado del USB;
+- el color del PCB;
+- la posición del chip o módulo, la antena, los botones, los LEDs y los conectores;
+- las funciones alternativas de cada pin.
+
+Con eso la placa se dibuja en dos vistas, entre las que el usuario cambia con un botón:
+
+- **realista**: la placa vista desde arriba, con sus componentes en su sitio;
+- **bloque**: todos los pines coloreados por función.
+
+Pon la fuente en el campo `fuente` (se ve en la ficha) y avisa de lo que no puedas confirmar o de lo que varía entre versiones. Las placas se dibujan con el tipo `modulo` y los microcontroladores DIP con `dip`. Las que no entran en una protoboard (Arduino Uno o Mega) quedan fuera y se conectan con cables.
 
 ### 3. Diseña la disposición
 
@@ -67,9 +82,9 @@ Lee `references/disposicion.md` antes de colocar nada: geometría, tamaños de c
 
 ### 4. Escribe la página
 
-1. Copia `assets/plantilla.html` junto a los archivos del usuario, o en el directorio de trabajo, como `montaje_<circuito>.html`.
-2. Cambia `__TITULO__` en `<title>` por un nombre corto. No toques el motor.
-3. Rellena el bloque entre `// DATOS-INICIO` y `// DATOS-FIN` con CONFIG, PARTS y STEPS, siguiendo `references/formato.md`. Solo datos literales, porque el verificador evalúa el bloque por separado.
+1. Escribe los datos (CONFIG, PARTS y STEPS) en un archivo `datos_<circuito>.js`, siguiendo `references/formato.md`. Solo datos literales, porque el verificador los evalúa aparte. Pon en `CONFIG.tituloCorto` un nombre corto para la pestaña.
+2. Arma la página junto a los archivos del usuario: `node scripts/construir.cjs datos_<circuito>.js montaje_<circuito>.html`. El motor no se toca. Para cambios pequeños, edita directamente el bloque entre `// DATOS-INICIO` y `// DATOS-FIN` del HTML.
+3. Si el usuario tiene montajes hechos con una versión anterior de la skill, actualízalos con `node scripts/construir.cjs --actualizar montaje.html`: conservan sus datos y reciben el motor nuevo.
 4. Cada paso lleva:
    - un **título** con la acción;
    - un **cuerpo** con los huecos exactos en `<code>` y la orientación («cara plana hacia ti», «franja hacia la columna 9», «+ en 8j», «USB hacia la derecha»);
@@ -122,7 +137,8 @@ En pocas líneas:
 
 ## Archivos
 
-- `assets/plantilla.html`: motor de dibujo y animación. Se copia y se rellenan los datos.
+- `assets/plantilla.html`: motor de dibujo y animación. El bloque `NUCLEO` (geometría y patas) lo usa también el verificador.
+- `scripts/construir.cjs`: arma una página a partir de un archivo de datos, o actualiza el motor de páginas ya hechas (`--actualizar`).
 - `assets/ejemplo_*.html` (con su `.redes.json`): ejemplos verificados.
 - `scripts/verificar_protoboard.cjs`: verificación de huecos, cables y conexiones.
 - `scripts/netlist_a_json.py`: de KiCad a `redes.json` (opcional, necesita `kicad-cli`).
@@ -130,4 +146,4 @@ En pocas líneas:
 - `references/formato.md`: campos de CONFIG, PARTS y STEPS.
 - `references/disposicion.md`: reglas de disposición y geometría.
 - `references/pinouts.md`: pinouts físicos comunes, LEDs, códigos de condensadores y numeración de KiCad.
-- `references/microcontroladores.md`: placas y microcontroladores vistos desde arriba, y cómo investigar uno nuevo.
+- `references/microcontroladores.md`: investigación obligatoria de placas, vistas realista y de bloque, y datos verificados de Nano, Pico, ESP32, NodeMCU, D1 mini, ATmega328P y ATtiny85.

@@ -60,6 +60,10 @@ h1{font-family:var(--f-head);font-weight:700;font-size:30px;line-height:1.1;marg
 .ficha th,.ficha td{padding:4px 8px 4px 0;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
 .ficha th{font:600 10.5px var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 .ficha td.h{font-family:var(--f-mono);white-space:nowrap}
+.ficha details.pines-mod{margin:4px 0 8px}
+.ficha details.pines-mod summary{cursor:pointer;font-weight:600;color:var(--accent)}
+.ficha .gp{margin:4px 0;line-height:1.5}
+.ficha .gp .usado{font-weight:700;color:var(--ink)}
 .ficha .pie{display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--muted);font-size:13px}
 .ficha .ir{font:600 13px var(--f-body);color:var(--accent);background:transparent;border:1px solid var(--line);border-radius:7px;padding:5px 9px;cursor:pointer;white-space:nowrap}
 .ficha .x:focus-visible,.ficha .ir:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -213,6 +217,19 @@ const PARTS=[
    dibujo:{usb:'arriba',
      izq:['D13','3V3','REF','A0','A1','A2','A3','A4','A5','A6','A7','5V','RST','GND','VIN'],
      der:['D12','D11','D10','D9','D8','D7','D6','D5','D4','D3','D2','GND','RST','RX0','TX1']},
+   usb:'mini',extension:{usb:0.9,opuesto:0.9},
+   aspecto:[
+     {tipo:'boton',x:.38,y:.24,w:.24,h:.1,texto:'RESET'},
+     {tipo:'chip',x:.3,y:.42,w:.4,h:.16,texto:'ATmega328P',tam:5},
+     {tipo:'led',x:.24,y:.68,w:.08,h:.03,color:'#ffb31a',texto:'L'},
+     {tipo:'led',x:.38,y:.68,w:.08,h:.03,color:'#3ddc5a',texto:'PWR'},
+     {tipo:'led',x:.52,y:.68,w:.08,h:.03,color:'#ff3b3b',texto:'TX'},
+     {tipo:'led',x:.66,y:.68,w:.08,h:.03,color:'#ff3b3b',texto:'RX'},
+     {tipo:'conector',x:.3,y:.8,w:.4,h:.12,filas:3,cols:2,texto:'ICSP'}],
+   funciones:{D2:'INT0',D3:'PWM · INT1',D5:'PWM',D6:'PWM',D9:'PWM',D10:'PWM · SS',D11:'PWM · MOSI',D12:'MISO',D13:'SCK · LED L',
+     A4:'SDA',A5:'SCL',A6:'solo entrada analógica',A7:'solo entrada analógica',RX0:'D0 · serie',TX1:'D1 · serie',VIN:'entrada 7–12 V',
+     '5V':'5 V regulados',  '3V3':'salida 3,3 V, poca corriente',REF:'AREF, referencia del ADC',RST:'reinicio, activo en bajo'},
+   fuente:'docs.arduino.cc: pinout oficial del Nano y guía de diseño (placa de 17,76 × 43,16 mm; mini-USB e ICSP en la cara de arriba).',
    conex:{'D2':'D2','D3':'D3','GND':'GND'},
    info:'Arduino Nano (ATmega328P). Sus pines digitales D2 y D3 encienden los LEDs. Va a horcajadas sobre la canaleta, con el USB hacia la derecha.'},
   {id:'gN',step:3,type:'wire',pts:[[15,'j'],[15,'B-']],color:'black',net:'GND',info:'GND del Nano (pin de la fila g, columna 15) al riel GND.'},
@@ -251,6 +268,7 @@ const STEPS=[
 // DATOS-FIN
 
 // ================= motor (no hace falta tocarlo) =================
+// NUCLEO-INICIO  (geometría y patas: verificar_protoboard.cjs lee este bloque; sin DOM)
 const P=18,BX=110,BY=90,NC=CONFIG.columnas||40,BW=48+(NC-1)*P,BH=342,SAL_Y=44,JACK_X=70;
 const NB=CONFIG.tableros||1,OFF=372,dyB=b=>((b||1)-1)*OFF;   // protoboard 2 va debajo de la 1
 const rielesDe=b=>Array.isArray(CONFIG.rieles)?(CONFIG.rieles[(b||1)-1]||{}):(CONFIG.rieles||{});
@@ -270,6 +288,17 @@ function hp(h){
   if(h.fuente!==undefined) return {x:JACK_X,y:ROW[h.fuente]+dyB(h.tab)};
   return h;
 }
+function dipHole(p,i){const h=p.n/2;return i<=h?[p.c+i-1,'f',p.tab]:[p.c+(p.n-i),'e',p.tab]}
+const FILA_IDX={a:0,b:1,c:2,d:3,e:4,f:7,g:8,h:9,i:10,j:11};   // posición de cada fila en décimas de pulgada
+// Placa de desarrollo. p.dibujo copia el pinout de referencia tal como se ve desde arriba (cara de componentes):
+// usb 'arriba'|'abajo'; izq y der = pines de cada lado, de arriba hacia abajo. p.usbLado: 'izq'|'der' en la protoboard.
+function moduloGiroAntihorario(p){return (p.dibujo.usb==='arriba')===(p.usbLado==='izq')}
+function moduloPines(p){
+  const d=p.dibujo,ccw=moduloGiroAntihorario(p);
+  const sup=ccw?d.der.slice():d.izq.slice().reverse(),inf=ccw?d.izq.slice():d.der.slice().reverse();
+  return sup.map((nm,i)=>({name:nm,hole:[p.c+i,p.filas[0],p.tab]})).concat(inf.map((nm,i)=>({name:nm,hole:[p.c+i,p.filas[1],p.tab]})));
+}
+// NUCLEO-FIN
 function hn(h){
   if(!Array.isArray(h)) return h.sal!==undefined?'salida':'fuente';
   const pre=NB>1?`P${h[2]||1}·`:'',rn=rielesDe(h[2])[h[1]];
@@ -328,11 +357,8 @@ function decorSVG(){
 }
 // ---------- piezas ----------
 function pinMark(q){return `<circle class="pin" cx="${q.x}" cy="${q.y}" r="2.3" fill="#9aa1a8" stroke="#5f666d" stroke-width=".7"/>`}
-function wireD(p){
-  if(p.curve){const a=hp(p.curve.from),b=hp(p.curve.to);return `M${a.x} ${a.y} C${cx(p.curve.c1[0])} ${p.curve.c1[1]} ${cx(p.curve.c2[0])} ${p.curve.c2[1]} ${b.x} ${b.y}`}
-  return 'M'+p.pts.map(hp).map(q=>q.x+' '+q.y).join(' L');
-}
-const wireEnds=p=>p.curve?[p.curve.from,p.curve.to]:p.pts;
+function wireD(p){return 'M'+p.pts.map(hp).map(q=>q.x+' '+q.y).join(' L')}
+const wireEnds=p=>p.pts;
 function renderWire(p){
   const d=wireD(p),col=C[p.color]||p.color;
   const out=p.color==='white'?'#8a9199':p.color==='black'?'#000':shade(col,.38);
@@ -418,7 +444,6 @@ function renderPot(p){
   p.pins.forEach((L,i)=>{s+=`<text x="${x+(i-1)*P}" y="${y+6}" text-anchor="middle" font-size="7.5" font-weight="700" fill="#fff">${L}</text>`});
   return s+`</g>`;
 }
-function dipHole(p,i){const h=p.n/2;return i<=h?[p.c+i-1,'f',p.tab]:[p.c+(p.n-i),'e',p.tab]}
 function renderDIP(p){
   const h=p.n/2,dy=dyB(p.tab),x0=cx(p.c)-9,x1=cx(p.c+h-1)+9,y0=ROW.e-5+dy,y1=ROW.f+5+dy,ym=(y0+y1)/2;
   let s=`<g class="drop" filter="url(#sh)"><rect x="${x0}" y="${y0}" width="${x1-x0}" height="${y1-y0}" rx="3" fill="#1d1e21"/><path d="M${x0} ${ym-7} A7 7 0 0 1 ${x0} ${ym+7}" fill="#3a3c41"/><circle cx="${cx(p.c)}" cy="${y1-11}" r="2.6" fill="#55585f"/>`;
@@ -426,28 +451,69 @@ function renderDIP(p){
   s+=`<text x="${(x0+x1)/2}" y="${ym+4}" text-anchor="middle" font-size="10" font-weight="700" fill="#e8eaed">${p.val||''}</text>`;
   return s+`</g>`;
 }
-// Placa de desarrollo vista desde arriba. p.dibujo copia el pinout oficial tal como se ve en la hoja de datos
-// (cara de componentes hacia arriba): usb 'arriba'|'abajo', izq y der = pines de cada lado de arriba hacia abajo.
-// p.usbLado: hacia dónde queda el USB en la protoboard ('izq'|'der'); p.filas: [fila de arriba, fila de abajo].
-function moduloPines(p){
-  const d=p.dibujo,ccw=(d.usb==='arriba')===(p.usbLado==='izq');
-  const sup=ccw?d.der.slice():d.izq.slice().reverse(),inf=ccw?d.izq.slice():d.der.slice().reverse();
-  return sup.map((nm,i)=>({name:nm,hole:[p.c+i,p.filas[0],p.tab]})).concat(inf.map((nm,i)=>({name:nm,hole:[p.c+i,p.filas[1],p.tab]})));
+const CAT={alimentacion:['#d7263d','Alimentación'],tierra:['#202124','Tierra'],digital:['#2f6fdc','Digital'],analogico:['#2e9b4f','Analógico'],
+  comunicacion:['#8e44c9','Comunicación'],control:['#f08a24','Control'],otro:['#8a9199','Otros']};
+function catPin(p,nm){ // categoría de un pin: la de p.categorias o, si no, por su nombre
+  if(p.categorias&&p.categorias[nm]) return p.categorias[nm];
+  const n=String(nm).toUpperCase();
+  if(/^(A?GND|G|VSS|AGND)$/.test(n)) return 'tierra';
+  if(/^(5V|3V3|3\.3V|VIN|VBUS|VSYS|VCC|VDD|AVCC|AREF|REF|ADC_VREF|VREF|3V3_EN)$/.test(n)) return 'alimentacion';
+  if(/^(TX|RX|TXD|RXD|TX\d|RX\d|SDA|SCL|MOSI|MISO|SCK|CS|SS)$/.test(n)) return 'comunicacion';
+  if(/^(RST|RESET|EN|RUN|BOOT)$/.test(n)) return 'control';
+  if(/^(A\d+|VP|VN|ADC\d*)$/.test(n)) return 'analogico';
+  if(/^(D\d+|GP\d+|IO\d+|GPIO\d+|P[A-H]\d+)$/.test(n)) return 'digital';
+  return 'otro';
 }
-function moduloCaja(p){
-  const n=p.dibujo.izq.length,dy=dyB(p.tab);
-  return {x0:cx(p.c)-P*.62,x1:cx(p.c+n-1)+P*.62,y0:ROW[p.filas[0]]+dy-P*.72,y1:ROW[p.filas[1]]+dy+P*.72};
+function vistaDe(p){return p.vistaActual||p.vista||CONFIG.vistaPlacas||'realista'}
+function moduloCaja(p,real=true){ // contorno de la placa; en la vista realista suma lo que sobresale de los pines (extension, en pasos de 0,1")
+  const n=p.dibujo.izq.length,dy=dyB(p.tab),e=real?(p.extension||{}):{},izq=p.usbLado==='izq';
+  const eU=(e.usb||0)*P,eO=(e.opuesto||0)*P;
+  return {x0:cx(p.c)-P*.62-(izq?eU:eO),x1:cx(p.c+n-1)+P*.62+(izq?eO:eU),y0:ROW[p.filas[0]]+dy-P*.72,y1:ROW[p.filas[1]]+dy+P*.72};
 }
-function renderModulo(p){
-  const {x0,x1,y0,y1}=moduloCaja(p),col=p.color||'#1d5fa8',mx=(x0+x1)/2,my=(y0+y1)/2;
-  let s=`<g class="drop" filter="url(#sh)"><rect x="${x0}" y="${y0}" width="${x1-x0}" height="${y1-y0}" rx="4" fill="${col}" stroke="${col.startsWith('#')?shade(col,.4):'#222'}" stroke-width="1.2"/>`;
-  const ux=p.usbLado==='izq'?x0-10:x1-4;
-  s+=`<rect x="${ux}" y="${my-15}" width="14" height="30" rx="2" fill="#c9ced6" stroke="#80868e"/><rect x="${ux+(p.usbLado==='izq'?2:5)}" y="${my-9}" width="7" height="18" rx="1" fill="#555b63"/>`;
-  if(p.chip){const w=Math.min(64,(x1-x0)*.32);s+=`<rect x="${mx-w/2}" y="${my-14}" width="${w}" height="28" rx="2" fill="#17181b"/><text x="${mx}" y="${my+2.5}" text-anchor="middle" font-size="6.5" font-weight="700" fill="#c9cdd3">${p.chip}</text>`}
-  if(p.antena){const ax=p.usbLado==='izq'?x1-30:x0+6;s+=`<rect x="${ax}" y="${my-20}" width="24" height="40" rx="2" fill="none" stroke="#e6c36a" stroke-width="1.6" stroke-dasharray="5 3"/>`}
+function moduloRect(p,k,f){ // f en fracciones del diagrama de referencia: x a lo ancho (izq→der), y a lo largo (arriba→abajo)
+  const W=k.x1-k.x0,H=k.y1-k.y0,u0=f.x,u1=f.x+(f.w||0),v0=f.y,v1=f.y+(f.h||0);
+  return moduloGiroAntihorario(p)?{x:k.x0+v0*W,y:k.y1-u1*H,w:(v1-v0)*W,h:(u1-u0)*H}:{x:k.x1-v1*W,y:k.y0+u0*H,w:(v1-v0)*W,h:(u1-u0)*H};
+}
+function rasgoSVG(r,f){ // un componente de la placa, ya en coordenadas de la protoboard
+  const cxr=r.x+r.w/2,cyr=r.y+r.h/2,t=f.texto||'',fs=f.tam||6;
+  const txt=(col,dy=0)=>t?`<text x="${cxr}" y="${cyr+fs*.35+dy}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="${col}">${t}</text>`:'';
+  switch(f.tipo){
+    case 'chip': return `<rect x="${r.x-1.5}" y="${r.y-1.5}" width="${r.w+3}" height="${r.h+3}" rx="1" fill="none" stroke="#a7adb5" stroke-width="1.4" stroke-dasharray="1.2 1.3"/><rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="1.5" fill="#17181b" stroke="#4f545c" stroke-width="1"/><circle cx="${r.x+3.5}" cy="${r.y+3.5}" r="1.3" fill="#3b3e44"/>${txt('#c9cdd3')}`;
+    case 'modulo_rf': return `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="1.5" fill="#c3c8cf" stroke="#8d939b"/><rect x="${r.x+2}" y="${r.y+2}" width="${r.w-4}" height="${r.h-4}" rx="1" fill="none" stroke="#e6e9ed" stroke-width=".8"/>${txt('#3a3f46')}`;
+    case 'antena':{const vert=r.h>r.w,n=6;let d='';for(let i=0;i<=n;i++){if(vert){const y=r.y+i*r.h/n;d+=(i?'L':'M')+(i%2?r.x+r.w-2:r.x+2)+' '+y+' L'+(i%2?r.x+2:r.x+r.w-2)+' '+y}else{const x=r.x+i*r.w/n;d+=(i?'L':'M')+x+' '+(i%2?r.y+r.h-2:r.y+2)+' L'+x+' '+(i%2?r.y+2:r.y+r.h-2)}}
+      return `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="#000" opacity=".12"/><path d="${d}" fill="none" stroke="#d9b24a" stroke-width="1.6"/>`;}
+    case 'boton': return `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="1" fill="#c9ced6" stroke="#7d838b"/><circle cx="${cxr}" cy="${cyr}" r="${Math.min(r.w,r.h)*.3}" fill="#2b2d31"/>${t?`<text x="${cxr}" y="${r.y-2}" text-anchor="middle" font-size="5" font-weight="700" fill="#fff">${t}</text>`:''}`;
+    case 'led': return `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx=".8" fill="${f.color||'#ff3b3b'}" stroke="#fff" stroke-width=".5"/>${t?`<text x="${r.x+r.w+2}" y="${cyr+2}" font-size="4.6" font-weight="700" fill="#fff">${t}</text>`:''}`;
+    case 'cristal': return `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="${Math.min(r.w,r.h)/2}" fill="#c9ced6" stroke="#7d838b"/>${txt('#33373c')}`;
+    case 'regulador': return `<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="1" fill="#1d1e21"/><rect x="${r.x+r.w*.2}" y="${r.y}" width="${r.w*.6}" height="${Math.max(2,r.h*.25)}" fill="#b6bcc4"/>${txt('#c9cdd3',2)}`;
+    case 'conector':{let o='';const fi=f.filas||2,co=f.cols||3;for(let i=0;i<fi;i++)for(let j=0;j<co;j++){const x=r.x+(j+.5)*r.w/co,y=r.y+(i+.5)*r.h/fi;o+=`<rect x="${x-2.6}" y="${y-2.6}" width="5.2" height="5.2" fill="#d8b24a"/><rect x="${x-1}" y="${y-1}" width="2" height="2" fill="#3a3220"/>`}return o+(t?`<text x="${cxr}" y="${r.y-2}" text-anchor="middle" font-size="5" font-weight="700" fill="#fff">${t}</text>`:'');}
+    case 'texto': return txt(f.color||'#ffffff');
+  }
+  return '';
+}
+const USB_TAM={micro:[22,12],mini:[28,15],c:[26,10],b:[36,30]};
+function renderModulo(p){return vistaDe(p)==='bloque'?renderModuloBloque(p):renderModuloReal(p)}
+function renderModuloReal(p){ // vista realista: PCB, conector USB y los componentes ubicados según la investigación (p.aspecto)
+  const k=moduloCaja(p),col=p.color||'#1d5fa8',my=(k.y0+k.y1)/2,[uw,ud]=USB_TAM[p.usb||'micro']||USB_TAM.micro;
+  let s=`<g class="drop" filter="url(#sh)"><rect x="${k.x0}" y="${k.y0}" width="${k.x1-k.x0}" height="${k.y1-k.y0}" rx="3" fill="${col}" stroke="${col.startsWith('#')?shade(col,.4):'#222'}" stroke-width="1.2"/>`;
+  const ux=p.usbLado==='izq'?k.x0-ud*.45:k.x1-ud*.55;
+  s+=`<rect x="${ux}" y="${my-uw/2}" width="${ud}" height="${uw}" rx="1.5" fill="#c9ced6" stroke="#80868e"/><rect x="${ux+ud*.25}" y="${my-uw*.3}" width="${ud*.5}" height="${uw*.6}" rx="1" fill="#555b63"/>`;
+  for(const f of p.aspecto||[]) s+=rasgoSVG(moduloRect(p,k,f),f);
+  if(!(p.aspecto||[]).length&&p.chip){const mx=(k.x0+k.x1)/2,w=Math.min(64,(k.x1-k.x0)*.32);s+=`<rect x="${mx-w/2}" y="${my-14}" width="${w}" height="28" rx="2" fill="#17181b"/><text x="${mx}" y="${my+2.5}" text-anchor="middle" font-size="6.5" font-weight="700" fill="#c9cdd3">${p.chip}</text>`}
   for(const {name,hole} of moduloPines(p)){const q=hp(hole),top=hole[1]===p.filas[0];
     s+=`<rect x="${q.x-3.8}" y="${q.y-3.8}" width="7.6" height="7.6" rx="1" fill="#d8b24a" stroke="#8a6d1d" stroke-width=".6"/><circle cx="${q.x}" cy="${q.y}" r="1.7" fill="#3a3220"/>`;
     s+=`<text transform="translate(${top?q.x-2.3:q.x+2.3} ${top?q.y+6.5:q.y-6.5}) rotate(${top?90:-90})" font-size="6" font-weight="700" fill="#fff">${name}</text>`}
+  return s+`</g>`;
+}
+function renderModuloBloque(p){ // vista de bloque: todos los pines del microcontrolador, coloreados por función
+  const k=moduloCaja(p,false),mx=(k.x0+k.x1)/2,my=(k.y0+k.y1)/2;
+  let s=`<g class="drop" filter="url(#sh)"><rect x="${k.x0}" y="${k.y0}" width="${k.x1-k.x0}" height="${k.y1-k.y0}" rx="6" fill="#f7f8fa" stroke="#3b4350" stroke-width="1.4"/>`;
+  const ux=p.usbLado==='izq'?k.x0-12:k.x1;
+  s+=`<rect x="${ux}" y="${my-11}" width="12" height="22" rx="2" fill="#d5d9df" stroke="#3b4350"/><text transform="translate(${ux+8.2} ${my}) rotate(-90)" text-anchor="middle" font-size="5.5" font-weight="700" fill="#3b4350">USB</text>`;
+  s+=`<text x="${mx}" y="${my-2}" text-anchor="middle" font-size="10" font-weight="700" fill="#1d2430">${p.val||p.ref}</text><text x="${mx}" y="${my+9}" text-anchor="middle" font-size="6.5" fill="#5b6573">${p.chip||''}${p.chip?' · ':''}vista de bloque</text>`;
+  for(const {name,hole} of moduloPines(p)){const q=hp(hole),top=hole[1]===p.filas[0],c=CAT[catPin(p,name)][0];
+    s+=`<circle cx="${q.x}" cy="${q.y}" r="4.6" fill="${c}" stroke="#fff" stroke-width="1"/><circle cx="${q.x}" cy="${q.y}" r="1.4" fill="#fff"/>`;
+    s+=`<text transform="translate(${top?q.x-2.4:q.x+2.4} ${top?q.y+7.5:q.y-7.5}) rotate(${top?90:-90})" font-size="6.5" font-weight="700" fill="${c}">${name}</text>`}
   return s+`</g>`;
 }
 function renderXtal(p){ // cristal de cuarzo HC-49
@@ -483,7 +549,7 @@ function holesOf(p){
 }
 function tagPos(p){
   if(['to92','to126','to220','pot'].includes(p.type)){const q=hp([p.c,p.r,p.tab]);return {x:q.x,y:isTop(p.r)?q.y-23:q.y+25}}
-  if(p.type==='modulo'){const k=moduloCaja(p);return {x:(k.x0+k.x1)/2,y:k.y0-10}}
+  if(p.type==='modulo'){const k=moduloCaja(p,vistaDe(p)!=='bloque');return {x:(k.x0+k.x1)/2,y:k.y0-10}}
   if(p.type==='dip'){return {x:(cx(p.c)+cx(p.c+p.n/2-1))/2,y:ROW.f+24+dyB(p.tab)}}
   const h=holesOf(p);const a=hp(h[0]),b=hp(h[1]);const top=isTop(h[0][1]);
   const o=(RSIZE[String(p.w)]||[0,14])[1]/2+8;
@@ -526,6 +592,7 @@ function seleccionar(p,pt){
   ficha.innerHTML=`<div class="ficha-h"><b>${p.ref||'Cable'}</b><span>${esCable?(CNAME[p.color]||''):(p.val||p.ohm||'')}</span><span class="pill">${TIPO[p.type]||p.type}</span><button class="x" type="button" aria-label="Cerrar">×</button></div>
     ${p.info?`<p>${p.info}</p>`:''}${p.type==='led'?`<p class="note">LED ${LEDN[p.color]||p.color||''} de ${p.d==3?3:5} mm${p.vf?` · V<sub>F</sub> ≈ ${p.vf}`:''}${p.i?` · I ≈ ${p.i}`:''}. Pata larga = ánodo; lado plano = cátodo.</p>`:''}${p.type==='cap'&&p.code?`<p class="note">Código ${p.code} = ${codigoCap(p.code)}: dos cifras × 10 elevado a la tercera, en pF. Sin polaridad.</p>`:''}${p.type==='elec'?`<p class="note">Electrolítico${p.val?' de '+p.val:''}${p.v?', '+p.v:''}. La franja con «−» marca el negativo; la pata larga es la positiva. Al revés se daña.</p>`:''}
     <div class="tw"><table><tr><th>Pata</th><th>Hueco</th><th>Nodo</th>${esCable?'':'<th>Unida a</th>'}</tr>${filas}</table></div>
+    ${p.type==='modulo'?pinesModuloHTML(p):''}
     <div class="pie"><span>Paso ${p.step}: ${st?st.t:''}</span>${p.step!==cur?'<button class="ir" type="button">Ir al paso</button>':''}</div>`;
   ficha.querySelector('.x').addEventListener('click',cerrarFicha);
   const ir=ficha.querySelector('.ir');
@@ -538,6 +605,16 @@ function seleccionar(p,pt){
   if(y+H>A.height-8) y=pt.y-A.top-H-14;
   y=Math.max(8,y);
   ficha.style.left=x+'px';ficha.style.top=y+'px';
+}
+function pinesModuloHTML(p){ // todas las interacciones posibles de la placa con su entorno, agrupadas por función
+  const grupos={};
+  for(const nm of [...new Set(moduloPines(p).map(x=>x.name))]) (grupos[catPin(p,nm)] ??= []).push(nm);
+  const usado=nm=>(p.conex||{})[nm];
+  let h=`<details class="pines-mod"><summary>Todos los pines (${moduloPines(p).length})</summary>`;
+  for(const [cat,[col,nom]] of Object.entries(CAT)) if(grupos[cat])
+    h+=`<div class="gp"><span class="sw" style="background:${col}"></span><b>${nom}</b>: ${grupos[cat].map(nm=>`<span class="${usado(nm)?'usado':''}">${nm}${(p.funciones||{})[nm]?` <span class="note">(${p.funciones[nm]})</span>`:''}${usado(nm)?' ✓':''}</span>`).join(', ')}</div>`;
+  h+=`<p class="note">✓ = pin usado en este montaje.${p.fuente?` Fuente: ${p.fuente}`:''}</p></details>`;
+  return h;
 }
 function cerrarFicha(){
   if(!selP&&ficha.hidden) return;
@@ -557,6 +634,15 @@ for(const p of PARTS){
   if(p.ref){const t=document.createElementNS(NS,'g');t.setAttribute('class','tag');t.innerHTML=tagSVG(p);tagsL.appendChild(t);p.tag=t}
 }
 const byId=Object.fromEntries(PARTS.map(p=>[p.id,p]));
+// ---------- vista de las placas: realista ⇄ bloque ----------
+if(PARTS.some(p=>p.type==='modulo')){
+  const b=document.createElement('button');b.type='button';b.className='btn';b.id='vista-placas';
+  const pon=()=>{const v=vistaDe(PARTS.find(p=>p.type==='modulo'));b.textContent=v==='bloque'?'▦ Placa: bloque':'▣ Placa: realista';b.setAttribute('aria-label','Cambiar la vista de las placas (ahora '+v+')')};
+  b.addEventListener('click',()=>{const v=vistaDe(PARTS.find(p=>p.type==='modulo'))==='bloque'?'realista':'bloque';
+    for(const p of PARTS) if(p.type==='modulo'){p.vistaActual=v;p.el.innerHTML=renderPart(p);if(p.tag)p.tag.innerHTML=tagSVG(p)}
+    cerrarFicha();pon()});
+  pon();document.querySelector('.toolbar .spacer').before(b);
+}
 // ---------- encabezado y leyenda ----------
 document.getElementById('kicker').textContent=CONFIG.kicker||'';
 document.getElementById('titulo').textContent=CONFIG.titulo||document.title;

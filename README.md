@@ -9,11 +9,16 @@ Skill de Claude Code: **le pasas un esquemático y te monta la animación paso a
 - **LEDs realistas**: lado plano, yunque y poste, 3 o 5 mm, color real. Se encienden en la prueba y su ficha muestra V<sub>F</sub> e I.
 - **Condensadores realistas**: cerámico con su código (104 = 100 nF), poliéster y multicapa; electrolítico visto desde arriba, con franja «−» y tapa de aluminio.
 - **Botón «⚡ Corriente»** para mostrar u ocultar la animación de la corriente.
-- **Microcontroladores y placas** (Arduino Nano, ESP32, Raspberry Pi Pico, NodeMCU, Wemos D1 mini, ATmega328P, ATtiny85): se dibujan vistos desde arriba con el nombre de cada pin. Si la placa es nueva, la skill investiga su pinout oficial y la separación entre filas antes de montarla.
+- **Microcontroladores y placas** (Arduino Nano, ESP32, Raspberry Pi Pico, NodeMCU, Wemos D1 mini, ATmega328P, ATtiny85), con dos vistas que se cambian con un botón:
+  - **realista**: la placa vista desde arriba, con su chip o módulo, antena, botones, LEDs, conectores y USB en su sitio real;
+  - **bloque**: todos los pines coloreados por función (alimentación, tierra, digital, analógico, comunicación, control).
+
+  La ficha de la placa lista todos los pines con sus funciones alternativas. Antes de dibujar cualquier placa, la skill investiga en internet su documentación oficial, medidas y fotos, y cita la fuente.
+- **`scripts/construir.cjs`** arma una página a partir de un archivo de datos y actualiza montajes antiguos al motor nuevo sin perder sus datos.
 
 Abre los ejemplos de `assets/` en el navegador:
 
-- `ejemplo_puente_h.html`: el puente H con A715/D882 del anexo de una práctica de Electrónica Análoga;
+- `ejemplo_puente_h.html`: puente H con A715/D882 y transistores de mando;
 - `ejemplo_leds.html`: LEDs con resistencia e interruptor;
 - `ejemplo_555_dos_protoboards.html`: NE555 intermitente repartido en dos protoboards;
 - `ejemplo_arduino_nano.html`: Arduino Nano con dos LEDs y su programa.
@@ -72,7 +77,8 @@ Con KiCad, si está `kicad-cli`, las conexiones se extraen automáticamente.
 SKILL.md                          instrucciones para Claude
 assets/plantilla.html             motor de dibujo y animación (se copia y se rellenan los datos)
 assets/ejemplo_*.html             ejemplos verificados (puente H, LEDs, 555 en dos protoboards)
-scripts/verificar_protoboard.cjs  verificación de huecos y redes contra el esquema
+scripts/construir.cjs             arma una página desde un archivo de datos o actualiza el motor (--actualizar)
+scripts/verificar_protoboard.cjs  verificación de huecos, cables rectos y redes contra el esquema
 scripts/netlist_a_json.py         KiCad → redes.json (opcional)
 scripts/comprobar_herramientas.sh comprueba los requisitos
 references/formato.md             formato de CONFIG, PARTS y STEPS
